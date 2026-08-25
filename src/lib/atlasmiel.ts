@@ -1,0 +1,4 @@
+import { createClient } from '@supabase/supabase-js'
+export type CrmOrder={clientId:string; customerName:string; customerPhone:string; address:Record<string,string>; productId:string; quantity:number}
+export function atlasmielAdmin(){return createClient(process.env.ATLASMIEL_SUPABASE_URL||process.env.NEXT_PUBLIC_SUPABASE_URL||'',process.env.ATLASMIEL_SUPABASE_SERVICE_ROLE_KEY||process.env.SUPABASE_SERVICE_ROLE_KEY||'')}
+export function toAtlasmielOrder(input:CrmOrder,product:{id:string;name:string;price:number}){const orderNumber=`CA-${Date.now().toString(36).toUpperCase()}`; const total=product.price*input.quantity; return {order_number:orderNumber,customer_name:input.customerName,customer_email:'',customer_phone:input.customerPhone,items:[{product_id:product.id,product_name:product.name,quantity:input.quantity,price:product.price}],subtotal:total,shipping:0,total,status:'pending',shipping_address:input.address,payment_method:'cash_on_delivery'} }
