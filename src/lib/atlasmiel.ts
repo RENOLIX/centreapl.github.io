@@ -2,5 +2,5 @@ import { createClient } from '@supabase/supabase-js'
 export type CrmOrder={clientId:string; customerName:string; customerPhone:string; address:Record<string,string>; productId:string; quantity:number}
 type AtlasmielEnv={ATLASMIEL_SUPABASE_URL?:string; ATLASMIEL_SUPABASE_ANON_KEY?:string; NEXT_PUBLIC_SUPABASE_URL?:string; NEXT_PUBLIC_SUPABASE_ANON_KEY?:string}
 export function getAtlasmielConfig(env:AtlasmielEnv){return {url:env.ATLASMIEL_SUPABASE_URL||env.NEXT_PUBLIC_SUPABASE_URL||'',key:env.ATLASMIEL_SUPABASE_ANON_KEY||env.NEXT_PUBLIC_SUPABASE_ANON_KEY||''}}
-export function atlasmielAdmin(){const config=getAtlasmielConfig(process.env);return createClient(config.url,config.key)}
+export function atlasmielAdmin(){const config=getAtlasmielConfig(process.env as AtlasmielEnv);return createClient(config.url,config.key)}
 export function toAtlasmielOrder(input:CrmOrder,product:{id:string;name:string;price:number}){const orderNumber=`CA-${Date.now().toString(36).toUpperCase()}`; const total=product.price*input.quantity; return {order_number:orderNumber,customer_name:input.customerName,customer_email:'',customer_phone:input.customerPhone,items:[{product_id:product.id,product_name:product.name,quantity:input.quantity,price:product.price}],subtotal:total,shipping:0,total,status:'pending',shipping_address:input.address,payment_method:'cash_on_delivery'} }
