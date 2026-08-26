@@ -1,5 +1,5 @@
 'use client'
 import Link from 'next/link'
-import { BarChart3, Users, Megaphone, CalendarClock, Settings, LogOut, ShoppingCart } from 'lucide-react'
-const links=[['/dashboard','Vue d’ensemble',BarChart3],['/clients','Clients',Users],['/campaigns','Campagnes',Megaphone],['/callbacks','Rappels',CalendarClock],['/orders','Commandes AtlasMiel',ShoppingCart],['/settings','Paramètres',Settings]] as const
+import { BarChart3, Users, Megaphone, CalendarClock, Settings, LogOut } from 'lucide-react'
+const links=[['/dashboard','Vue d’ensemble',BarChart3],['/clients','Clients',Users],['/campaigns','Campagnes',Megaphone],['/callbacks','Rappels',CalendarClock],['/settings','Paramètres',Settings]] as const
 export function Sidebar(){ return <aside className="hidden lg:flex w-64 shrink-0 flex-col border-r border-slate-200 bg-white p-5"><div className="mb-10 flex items-center gap-3"><div className="grid h-10 w-10 place-items-center rounded-xl bg-amber-400 font-black text-amber-950">CA</div><div><p className="font-black">CentreAPL</p><p className="text-xs text-slate-500">CRM AtlasMiel</p></div></div><nav className="space-y-1">{links.map(([href,label,Icon])=><Link key={href} href={href} className="flex items-center gap-3 rounded-xl px-3 py-3 text-sm font-semibold text-slate-600 hover:bg-amber-50 hover:text-amber-800"><Icon size={18}/>{label}</Link>)}</nav><div className="mt-auto border-t border-slate-100 pt-4"><button className="flex items-center gap-3 px-3 py-3 text-sm font-semibold text-slate-500"><LogOut size={18}/>Déconnexion</button></div></aside> }
