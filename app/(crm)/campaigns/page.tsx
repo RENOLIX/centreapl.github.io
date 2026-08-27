@@ -11,7 +11,7 @@ export default async function Campaigns(){
   const isAdmin=await isCurrentUserAdmin()
   const [{data,error},{data:agents},{data:clients}]=await Promise.all([
     supabase.from('campaigns').select('id,name,description,active,client_assignments(client_id),calls(id)').order('created_at',{ascending:false}),
-    isAdmin?supabase.from('agents').select('id,code,users(full_name)').eq('active',true):Promise.resolve({data:[]}),
+    isAdmin?supabase.from('agents').select('id,code,users!inner(full_name,role)').eq('active',true).eq('users.role','agent'):Promise.resolve({data:[]}),
     isAdmin?supabase.from('clients').select('id,first_name,last_name,phone').order('created_at',{ascending:false}).limit(500):Promise.resolve({data:[]}),
   ])
   const campaigns=(data??[]) as unknown as Campaign[]
