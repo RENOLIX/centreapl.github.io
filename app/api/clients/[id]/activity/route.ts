@@ -14,6 +14,8 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   const input = await request.json() as { type?: 'note' | 'callback'; body?: string; scheduledFor?: string }
   const { supabase, agent } = await currentAgent()
   if (!agent) return NextResponse.json({ error: 'Compte agent actif requis' }, { status: 403 })
+  const { data: client } = await supabase.from('clients').select('id').eq('id', clientId).maybeSingle()
+  if (!client) return NextResponse.json({ error: 'Client non affecté à cet agent' }, { status: 403 })
   if (input.type === 'note' && input.body?.trim()) {
     const { error } = await supabase.from('notes').insert({ client_id: clientId, agent_id: agent.id, body: input.body.trim() })
     return NextResponse.json(error ? { error: error.message } : { ok: true }, { status: error ? 500 : 201 })

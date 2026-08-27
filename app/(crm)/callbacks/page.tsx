@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { CalendarClock } from 'lucide-react'
 import { createClient } from '@/lib/supabase/server'
+import { CallbackActions } from '@/components/crm/callback-actions'
 
 export const dynamic = 'force-dynamic'
 
@@ -39,7 +40,7 @@ export default async function Callbacks() {
           <p className="mt-1 text-sm text-slate-500">{new Intl.DateTimeFormat('fr-DZ',{dateStyle:'medium',timeStyle:'short',timeZone:'Africa/Algiers'}).format(new Date(callback.scheduled_for))}{callback.agent?.user?.full_name ? ` · ${callback.agent.user.full_name}` : ''}</p>
           {callback.note && <p className="mt-2 text-sm text-slate-600">{callback.note}</p>}
         </div>
-        {callback.client && <Link className="btn btn-primary text-sm" href={`/clients/${callback.client.id}`}>Ouvrir la fiche</Link>}
+        <div className="flex flex-wrap gap-2">{callback.client && <Link className="btn btn-primary text-sm" href={`/clients/${callback.client.id}`}>Ouvrir la fiche</Link>}<CallbackActions id={callback.id}/></div>
       </div>)}
       {!callbacks.length && <div className="flex flex-col items-center px-5 py-12 text-center">
         <CalendarClock className="text-slate-300" size={34}/>
