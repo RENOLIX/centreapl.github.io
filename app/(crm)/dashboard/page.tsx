@@ -29,7 +29,7 @@ export default async function Dashboard() {
       supabase.from('calls').select('id,call_results!inner(is_success)', { count: 'exact', head: true }).eq('call_results.is_success', true),
       supabase.from('callbacks').select('*', { count: 'exact', head: true }).eq('status', 'scheduled'),
       supabase.from('calls').select('id,call_results!inner(is_sale)', { count: 'exact', head: true }).eq('call_results.is_sale', true),
-      isAdmin ? supabase.from('agents').select('id,code,active,users(full_name,email),calls(id,duration_seconds,call_results(is_success,is_sale)),callbacks(id,status)').order('created_at', { ascending: true }) : Promise.resolve({ data: [] }),
+      isAdmin ? supabase.from('agents').select('id,code,active,users!inner(full_name,email,role),calls(id,duration_seconds,call_results(is_success,is_sale)),callbacks(id,status)').eq('users.role', 'agent').order('created_at', { ascending: true }) : Promise.resolve({ data: [] }),
     ])
     values = [clients.count ?? 0, calls.count ?? 0, successes.count ?? 0, callbacks.count ?? 0, sales.count ?? 0]
     performance = (agents.data ?? []) as unknown as AgentPerformance[]
