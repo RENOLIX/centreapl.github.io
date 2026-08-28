@@ -44,7 +44,25 @@ export function ClientManagement() {
     setMessage('')
     const formElement = event.currentTarget
     const form = new FormData(formElement)
-    const response = await fetch('/api/clients', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(Object.fromEntries(form)) })
+    const fullName = String(form.get('client') || '').trim()
+    const nameParts = fullName.split(/\s+/).filter(Boolean)
+    const firstName = nameParts.shift() || ''
+    const lastName = nameParts.join(' ') || 'Client'
+    const response = await fetch('/api/clients', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        firstName,
+        lastName,
+        phone: form.get('tel1'),
+        phone2: form.get('tel2'),
+        address: form.get('address'),
+        commune: form.get('commune'),
+        wilaya: form.get('wilaya'),
+        total: form.get('total'),
+        product: form.get('product'),
+      }),
+    })
     const body = await response.json()
     if (!response.ok) return setMessage(body.error || 'Création impossible')
     formElement.reset()
@@ -90,12 +108,14 @@ export function ClientManagement() {
       <details className="card self-start p-4">
         <summary className="flex cursor-pointer list-none items-center gap-2 font-bold"><Plus size={17} />Nouveau client</summary>
         <form onSubmit={create} className="mt-4 grid gap-3 sm:grid-cols-2">
-          <input name="firstName" required placeholder="Prénom" className="rounded-xl border border-slate-200 p-3" />
-          <input name="lastName" required placeholder="Nom" className="rounded-xl border border-slate-200 p-3" />
-          <input name="phone" required placeholder="Téléphone" className="rounded-xl border border-slate-200 p-3" />
-          <input name="email" type="email" placeholder="Email" className="rounded-xl border border-slate-200 p-3" />
-          <input name="city" placeholder="Ville" className="rounded-xl border border-slate-200 p-3" />
-          <input name="notes" placeholder="Informations" className="rounded-xl border border-slate-200 p-3" />
+          <label className="text-xs font-bold uppercase text-slate-500 sm:col-span-2">Client — nom et prénom ensemble<input name="client" required placeholder="Ex. Mohamed Benali" className="mt-1 w-full rounded-xl border border-slate-200 p-3 text-sm font-normal normal-case" /></label>
+          <label className="text-xs font-bold uppercase text-slate-500">Tel 1<input name="tel1" required placeholder="Numéro principal" className="mt-1 w-full rounded-xl border border-slate-200 p-3 text-sm font-normal normal-case" /></label>
+          <label className="text-xs font-bold uppercase text-slate-500">Tel 2<input name="tel2" placeholder="Numéro secondaire" className="mt-1 w-full rounded-xl border border-slate-200 p-3 text-sm font-normal normal-case" /></label>
+          <label className="text-xs font-bold uppercase text-slate-500 sm:col-span-2">Adresse<input name="address" placeholder="Adresse complète" className="mt-1 w-full rounded-xl border border-slate-200 p-3 text-sm font-normal normal-case" /></label>
+          <label className="text-xs font-bold uppercase text-slate-500">Commune<input name="commune" placeholder="Commune" className="mt-1 w-full rounded-xl border border-slate-200 p-3 text-sm font-normal normal-case" /></label>
+          <label className="text-xs font-bold uppercase text-slate-500">Wilaya<input name="wilaya" placeholder="Wilaya" className="mt-1 w-full rounded-xl border border-slate-200 p-3 text-sm font-normal normal-case" /></label>
+          <label className="text-xs font-bold uppercase text-slate-500">Total<input name="total" placeholder="Montant total" className="mt-1 w-full rounded-xl border border-slate-200 p-3 text-sm font-normal normal-case" /></label>
+          <label className="text-xs font-bold uppercase text-slate-500">Produit<input name="product" placeholder="Produit" className="mt-1 w-full rounded-xl border border-slate-200 p-3 text-sm font-normal normal-case" /></label>
           <button className="btn btn-primary justify-center sm:col-span-2">Créer</button>
         </form>
       </details>
