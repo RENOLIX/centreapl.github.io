@@ -20,6 +20,7 @@ export function ClientAdminActions({ client }: { client: Client }) {
   const [pending, setPending] = useState(false)
   const [message, setMessage] = useState('')
   const information = typeof client.metadata?.information === 'string' ? client.metadata.information : ''
+  const metadataValue = (key: string) => typeof client.metadata?.[key] === 'string' ? String(client.metadata[key]) : ''
 
   async function update(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
@@ -68,6 +69,12 @@ export function ClientAdminActions({ client }: { client: Client }) {
               <input name="email" type="email" defaultValue={client.email} placeholder="Email" className="rounded-xl border border-slate-200 p-3" />
               <input name="city" defaultValue={client.city} placeholder="Ville" className="rounded-xl border border-slate-200 p-3" />
               <input name="notes" defaultValue={information} placeholder="Informations" className="rounded-xl border border-slate-200 p-3" />
+              <input name="phone2" defaultValue={metadataValue('telephone_2')} placeholder="Téléphone 2" className="rounded-xl border border-slate-200 p-3" />
+              <input name="address" defaultValue={metadataValue('adresse')} placeholder="Adresse" className="rounded-xl border border-slate-200 p-3" />
+              <input name="commune" defaultValue={metadataValue('commune')} placeholder="Commune" className="rounded-xl border border-slate-200 p-3" />
+              <input name="wilaya" defaultValue={metadataValue('wilaya')} placeholder="Wilaya" className="rounded-xl border border-slate-200 p-3" />
+              <input name="total" defaultValue={metadataValue('total')} placeholder="Total" className="rounded-xl border border-slate-200 p-3" />
+              <input name="product" defaultValue={metadataValue('produit')} placeholder="Produit" className="rounded-xl border border-slate-200 p-3" />
             </div>
             <button disabled={pending} className="btn btn-primary mt-5 w-full justify-center">{pending && <Loader2 size={16} className="animate-spin" />}Enregistrer les modifications</button>
           </form>

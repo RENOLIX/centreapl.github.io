@@ -15,8 +15,16 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
     last_name: input.lastName,
     phone: input.phone,
     email: input.email || '',
-    city: input.city || '',
-    metadata: input.notes ? { information: input.notes } : {},
+    city: input.city || input.commune || '',
+    metadata: {
+      information: input.notes || '',
+      telephone_2: input.phone2 || '',
+      adresse: input.address || '',
+      commune: input.commune || '',
+      wilaya: input.wilaya || '',
+      total: input.total || '',
+      produit: input.product || '',
+    },
     updated_at: new Date().toISOString(),
   }).eq('id', id)
   return NextResponse.json(error ? { error: error.message } : { ok: true }, { status: error ? 500 : 200 })

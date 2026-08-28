@@ -104,7 +104,7 @@ export function ClientManagement() {
         <summary className="flex cursor-pointer list-none items-center gap-2 font-bold"><Upload size={17} />Importer Excel ou CSV</summary>
         <form onSubmit={importFile} className="mt-4 space-y-3">
           <input name="clientsFile" required disabled={importing} type="file" accept=".csv,.xlsx,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" className="w-full rounded-xl border border-slate-200 p-3" />
-          <p className="text-xs leading-5 text-slate-500">Formats acceptés : Excel .xlsx et CSV. La première ligne doit contenir les colonnes prénom, nom, téléphone, email et ville. Formatez les téléphones comme texte dans Excel pour conserver le zéro initial.</p>
+          <p className="text-xs leading-5 text-slate-500">Formats acceptés : Excel .xlsx et CSV. Vos colonnes reconnues : client, tel 1, tel 2, adresse, commune, wilaya, total et produit. Formatez les téléphones comme texte dans Excel pour conserver le zéro initial.</p>
           <button disabled={importing} className="btn btn-primary w-full justify-center disabled:opacity-60">{importing && <Loader2 size={16} className="animate-spin" />}{importing ? 'Import en cours…' : 'Importer les clients'}</button>
         </form>
       </details>
