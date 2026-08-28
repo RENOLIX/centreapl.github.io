@@ -1,11 +1,11 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { parseClientRows } from '@/lib/csv'
-import { isCurrentUserManagement } from '@/lib/admin-auth'
+import { isCurrentUserAdmin } from '@/lib/admin-auth'
 import { resolveClientFolder } from '@/lib/client-folders'
 
 export async function POST(request: Request) {
-  if (!(await isCurrentUserManagement())) return NextResponse.json({ error: 'Accès gestion requis' }, { status: 403 })
+  if (!(await isCurrentUserAdmin())) return NextResponse.json({ error: 'Accès administrateur requis' }, { status: 403 })
   const body = await request.json() as { rows?: Record<string, string>[]; folderId?: string; folderName?: string }
   const parsed = parseClientRows(body.rows || [])
   const supabase = await createClient()

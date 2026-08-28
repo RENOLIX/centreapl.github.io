@@ -23,7 +23,7 @@ export default async function ClientsPage() {
 
   return <div className="space-y-6">
     <div><h1 className="text-2xl font-black">Dossiers clients</h1><p className="mt-1 text-sm text-slate-500">{total ?? 0} contact(s) réparti(s) dans {folders.length} dossier(s).</p></div>
-    <ClientManagement folders={folderOptions}/>
+    {role==='admin'&&<ClientManagement folders={folderOptions}/>}
     <section>
       <h2 className="mb-3 text-sm font-black uppercase tracking-wide text-slate-500">Choisissez un dossier</h2>
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">

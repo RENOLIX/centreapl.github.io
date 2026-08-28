@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { clientSchema } from '@/lib/validators'
-import { isCurrentUserManagement } from '@/lib/admin-auth'
+import { isCurrentUserAdmin } from '@/lib/admin-auth'
 import { resolveClientFolder } from '@/lib/client-folders'
 
 export async function GET() {
@@ -11,7 +11,7 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
-  if (!(await isCurrentUserManagement())) return NextResponse.json({ error: 'Accès gestion requis' }, { status: 403 })
+  if (!(await isCurrentUserAdmin())) return NextResponse.json({ error: 'Accès administrateur requis' }, { status: 403 })
   const body = await request.json()
   const parsed = clientSchema.safeParse(body)
   if (!parsed.success) return NextResponse.json({ error: 'Informations client invalides' }, { status: 400 })
