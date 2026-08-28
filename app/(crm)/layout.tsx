@@ -28,7 +28,8 @@ export default async function CrmLayout({ children }: { children: React.ReactNod
     role==='agent'?supabase.from('client_assignments').select('*',{count:'exact',head:true}).eq('status','active'):Promise.resolve({count:0}),
     role!=='agent'?supabase.from('pause_sessions').select('*',{count:'exact',head:true}).is('ended_at',null):Promise.resolve({count:0}),
   ])
-  const badges={callbacks:callbackResult.count??0,work:workResult.count??0,pauses:pauseResult.count??0,notifications:(callbackResult.count??0)+(workResult.count??0)+(pauseResult.count??0)}
+  const visibleCallbackNotifications=role==='agent'?0:(callbackResult.count??0)
+  const badges={callbacks:visibleCallbackNotifications,work:workResult.count??0,pauses:pauseResult.count??0,notifications:visibleCallbackNotifications+(workResult.count??0)+(pauseResult.count??0)}
 
   return (
     <div className="flex min-h-screen bg-[#edf1f4]">
@@ -41,7 +42,7 @@ export default async function CrmLayout({ children }: { children: React.ReactNod
             <span className="text-xs font-semibold text-slate-300">Centre d’appel AtlasMiel</span>
           </div>
           <div className="flex min-w-0 items-center gap-3 sm:gap-4">
-            <Link href="/notifications" className="relative hidden shrink-0 text-slate-300 sm:block"><Bell size={16}/>{badges.notifications>0&&<span className="absolute -right-2 -top-2 rounded-full bg-red-500 px-1 text-[8px] font-black text-white">{badges.notifications>9?'9+':badges.notifications}</span>}</Link>
+            {role!=='agent'&&<Link href="/notifications" className="relative hidden shrink-0 text-slate-300 sm:block"><Bell size={16}/>{badges.notifications>0&&<span className="absolute -right-2 -top-2 rounded-full bg-red-500 px-1 text-[8px] font-black text-white">{badges.notifications>9?'9+':badges.notifications}</span>}</Link>}
             <span className="hidden shrink-0 items-center gap-1.5 text-[11px] font-semibold text-emerald-400 sm:flex">
               <ShieldCheck size={14} />
               {role === 'admin' ? 'Administrateur' : role === 'supervisor' ? 'Superviseur' : 'Agent'}

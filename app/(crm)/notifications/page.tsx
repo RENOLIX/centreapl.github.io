@@ -2,12 +2,13 @@ import Link from 'next/link'
 import { Bell, CalendarClock, Coffee, PlayCircle } from 'lucide-react'
 import { createClient } from '@/lib/supabase/server'
 import { getCurrentRole } from '@/lib/admin-auth'
+import { redirect } from 'next/navigation'
 
 export const dynamic='force-dynamic'
 type Callback={id:string;scheduled_for:string;note:string;clients:{first_name:string;last_name:string}|null}
 type Pause={id:string;started_at:string;pause_type:string;agents:{id:string;code:string;users:{full_name:string}|null}|null}
 export default async function Notifications(){
-  const role=await getCurrentRole();const supabase=await createClient()
+  const role=await getCurrentRole();if(role==='agent')redirect('/work');const supabase=await createClient()
   const [{data:callbackRows},{count:workCount},{data:pauseRows}]=await Promise.all([
     supabase.from('callbacks').select('id,scheduled_for,note,clients(first_name,last_name)').eq('status','scheduled').order('scheduled_for').limit(100),
     role==='agent'?supabase.from('client_assignments').select('*',{count:'exact',head:true}).eq('status','active'):Promise.resolve({count:0}),

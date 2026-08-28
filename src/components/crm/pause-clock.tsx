@@ -81,12 +81,12 @@ export function PauseClock({ open }: { open: OpenPause | null }) {
         </div>
       )}
       <div className="grid gap-4 sm:grid-cols-2">
-        <button disabled={Boolean(currentPause || pending)} onClick={() => void start('coffee')} className="card flex min-h-44 flex-col items-center justify-center p-6 text-center transition hover:border-amber-400 disabled:cursor-not-allowed disabled:opacity-40">
+        <button disabled={Boolean(currentPause || pending)} onClick={() => void start('coffee')} className="card flex min-h-44 cursor-pointer flex-col items-center justify-center p-6 text-center transition duration-200 hover:border-amber-400 hover:bg-amber-50 hover:shadow-md disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-white disabled:hover:shadow-none">
           {pending === 'coffee' ? <Loader2 size={42} className="animate-spin text-amber-600" /> : <Coffee size={42} className="text-amber-600" />}
           <p className="mt-4 text-lg font-black">{pending === 'coffee' ? 'Démarrage…' : 'Pause café'}</p>
           <p className="mt-1 text-xs text-slate-500">Un seul clic suffit</p>
         </button>
-        <button disabled={Boolean(currentPause || pending)} onClick={() => void start('lunch')} className="card flex min-h-44 flex-col items-center justify-center p-6 text-center transition hover:border-emerald-400 disabled:cursor-not-allowed disabled:opacity-40">
+        <button disabled={Boolean(currentPause || pending)} onClick={() => void start('lunch')} className="card flex min-h-44 cursor-pointer flex-col items-center justify-center p-6 text-center transition duration-200 hover:border-emerald-400 hover:bg-emerald-50 hover:shadow-md disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-white disabled:hover:shadow-none">
           {pending === 'lunch' ? <Loader2 size={42} className="animate-spin text-emerald-600" /> : <Utensils size={42} className="text-emerald-600" />}
           <p className="mt-4 text-lg font-black">{pending === 'lunch' ? 'Démarrage…' : 'Pause déjeuner'}</p>
           <p className="mt-1 text-xs text-slate-500">Un seul clic suffit</p>
