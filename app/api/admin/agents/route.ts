@@ -7,7 +7,10 @@ export async function GET() {
   if (!await isCurrentUserAdmin()) return NextResponse.json({ error: 'Accès administrateur requis' }, { status: 403 })
   const admin = createAdminClient()
   const { data, error } = await admin.from('users').select('id,full_name,email,role,created_at,agents(id,code,active)').order('created_at', { ascending: false })
-  return NextResponse.json(error ? { error: error.message } : { users: data }, { status: error ? 500 : 200 })
+  return NextResponse.json(error ? { error: error.message } : { users: data }, {
+    status: error ? 500 : 200,
+    headers: { 'Cache-Control': 'no-store' },
+  })
 }
 
 export async function POST(request: Request) {
@@ -39,7 +42,17 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: agent.error.message }, { status: 500 })
     }
   }
-  return NextResponse.json({ ok: true }, { status: 201 })
+  const { data: user, error: readError } = await admin
+    .from('users')
+    .select('id,full_name,email,role,created_at,agents(id,code,active)')
+    .eq('id', userId)
+    .single()
+
+  if (readError) return NextResponse.json({ error: readError.message }, { status: 500 })
+  return NextResponse.json({ user }, {
+    status: 201,
+    headers: { 'Cache-Control': 'no-store' },
+  })
 }
 
 export async function PATCH(request: Request) {
