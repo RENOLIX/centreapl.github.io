@@ -2,6 +2,7 @@ import { Sidebar } from '@/components/crm/sidebar'
 import { MobileNav } from '@/components/crm/mobile-nav'
 import { Bell, Menu, ShieldCheck } from 'lucide-react'
 import { getCurrentProfile } from '@/lib/admin-auth'
+import { redirect } from 'next/navigation'
 
 function initials(name: string) {
   return name
@@ -14,8 +15,10 @@ function initials(name: string) {
 
 export default async function CrmLayout({ children }: { children: React.ReactNode }) {
   const profile = await getCurrentProfile()
-  const role = profile?.role || 'agent'
-  const accountName = profile?.fullName || 'Compte CRM'
+  if (!profile) redirect('/login')
+
+  const role = profile.role || 'agent'
+  const accountName = profile.fullName
 
   return (
     <div className="flex min-h-screen bg-[#edf1f4]">
@@ -38,7 +41,7 @@ export default async function CrmLayout({ children }: { children: React.ReactNod
               </div>
               <div className="min-w-0 text-right">
                 <p className="max-w-40 truncate text-xs font-semibold sm:max-w-56">{accountName}</p>
-                {profile?.email && (
+                {profile.email && (
                   <p className="hidden max-w-56 truncate text-[9px] text-slate-400 md:block">{profile.email}</p>
                 )}
               </div>
