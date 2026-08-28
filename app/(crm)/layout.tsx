@@ -3,6 +3,7 @@ import { MobileNav } from '@/components/crm/mobile-nav'
 import { Bell, Menu, ShieldCheck } from 'lucide-react'
 import { getCurrentProfile } from '@/lib/admin-auth'
 import { redirect } from 'next/navigation'
+import { PresenceHeartbeat } from '@/components/crm/presence-heartbeat'
 
 function initials(name: string) {
   return name
@@ -22,6 +23,7 @@ export default async function CrmLayout({ children }: { children: React.ReactNod
 
   return (
     <div className="flex min-h-screen bg-[#edf1f4]">
+      <PresenceHeartbeat isAgent={role === 'agent'} />
       <Sidebar role={role} />
       <div className="min-w-0 flex-1 pb-20 lg:pb-0">
         <header className="flex h-12 items-center justify-between bg-[#242424] px-4 text-white shadow-sm">

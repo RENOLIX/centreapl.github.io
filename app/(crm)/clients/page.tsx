@@ -1,48 +1,36 @@
-import { Search } from 'lucide-react'
+import Link from 'next/link'
+import { ArrowRight, Folder, FolderOpen } from 'lucide-react'
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { ClientManagement } from '@/components/crm/client-management'
-import { ClientList } from '@/components/crm/client-list'
 import { getCurrentRole } from '@/lib/admin-auth'
 
 export const dynamic = 'force-dynamic'
 
-type Client = {
-  id: string
-  first_name: string
-  last_name: string
-  phone: string
-  email: string
-  city: string
-  metadata: Record<string, unknown>
-  client_folders: { name: string } | null
-}
+type FolderRow = { id:string; name:string; clients:{count:number}[] }
 
-export default async function ClientsPage({ searchParams }: { searchParams: Promise<{ q?: string }> }) {
+export default async function ClientsPage() {
   const role = await getCurrentRole()
   if (role === 'agent') redirect('/work')
-  const { q = '' } = await searchParams
-  let data: Client[] = []
-  let count = 0
-  let folders: { id: string; name: string }[] = []
-
-  try {
-    const supabase = await createClient()
-    let query = supabase.from('clients').select('id,first_name,last_name,phone,email,city,metadata,client_folders(name)', { count: 'exact' }).order('created_at', { ascending: false })
-    const clean = q.trim().replace(/[,%()]/g, '')
-    if (clean) query = query.or(`first_name.ilike.%${clean}%,last_name.ilike.%${clean}%,phone.ilike.%${clean}%,city.ilike.%${clean}%`)
-    const [result, folderResult] = await Promise.all([query, supabase.from('client_folders').select('id,name').order('name')])
-    data = (result.data ?? []) as unknown as Client[]
-    count = result.count ?? 0
-    folders = folderResult.data ?? []
-  } catch {}
+  const supabase = await createClient()
+  const [{ data: folderRows }, { count: total }, { count: unfiledCount }] = await Promise.all([
+    supabase.from('client_folders').select('id,name,clients(count)').order('name'),
+    supabase.from('clients').select('*', { count:'exact', head:true }),
+    supabase.from('clients').select('*', { count:'exact', head:true }).is('folder_id', null),
+  ])
+  const folders = (folderRows ?? []) as unknown as FolderRow[]
+  const folderOptions = folders.map(folder => ({ id:folder.id, name:folder.name }))
 
   return <div className="space-y-6">
-    <div><h1 className="text-2xl font-black">Clients</h1><p className="mt-1 text-sm text-slate-500">{count} contact(s) accessible(s) depuis Supabase.</p></div>
-    <ClientManagement folders={folders} />
-    <section className="card overflow-hidden">
-      <form className="flex border-b border-slate-100 p-4"><div className="relative flex-1"><Search size={17} className="absolute left-3 top-3 text-slate-400"/><input name="q" defaultValue={q} placeholder="Rechercher un nom, téléphone ou ville" className="w-full rounded-xl border border-slate-200 py-2.5 pl-10 pr-3 text-sm outline-none focus:border-amber-400"/></div><button className="btn btn-primary ml-2">Rechercher</button></form>
-      <ClientList clients={data} isAdmin={role === 'admin'} hasSearch={Boolean(q)} />
+    <div><h1 className="text-2xl font-black">Dossiers clients</h1><p className="mt-1 text-sm text-slate-500">{total ?? 0} contact(s) réparti(s) dans {folders.length} dossier(s).</p></div>
+    <ClientManagement folders={folderOptions}/>
+    <section>
+      <h2 className="mb-3 text-sm font-black uppercase tracking-wide text-slate-500">Choisissez un dossier</h2>
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+        {folders.map(folder => { const count = folder.clients?.[0]?.count ?? 0; return <Link key={folder.id} href={`/clients/folders/${folder.id}`} className="card group flex items-center gap-4 p-5 transition hover:-translate-y-0.5 hover:border-emerald-300 hover:shadow-md"><div className="grid h-14 w-14 shrink-0 place-items-center rounded-xl bg-amber-100 text-amber-600"><Folder size={30}/></div><div className="min-w-0 flex-1"><h3 className="truncate text-base font-black text-slate-700">{folder.name}</h3><p className="mt-1 text-sm text-slate-500">{count} client(s)</p></div><ArrowRight size={19} className="text-slate-300 transition group-hover:translate-x-1 group-hover:text-emerald-600"/></Link> })}
+        {(unfiledCount ?? 0) > 0 && <Link href="/clients/folders/unfiled" className="card group flex items-center gap-4 p-5 transition hover:-translate-y-0.5 hover:border-slate-400 hover:shadow-md"><div className="grid h-14 w-14 shrink-0 place-items-center rounded-xl bg-slate-100 text-slate-500"><FolderOpen size={30}/></div><div className="min-w-0 flex-1"><h3 className="truncate text-base font-black text-slate-700">Sans dossier</h3><p className="mt-1 text-sm text-slate-500">{unfiledCount} ancien(s) client(s)</p></div><ArrowRight size={19} className="text-slate-300 transition group-hover:translate-x-1"/></Link>}
+        {!folders.length && !(unfiledCount ?? 0) && <div className="card col-span-full p-10 text-center text-sm text-slate-500">Aucun dossier. Créez votre premier client ou importez un fichier en indiquant un nouveau dossier.</div>}
+      </div>
     </section>
   </div>
 }
