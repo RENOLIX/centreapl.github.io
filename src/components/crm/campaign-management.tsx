@@ -5,21 +5,26 @@ import { Loader2 } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 
 type Option = { id: string; label: string }
+type ClientOption = Option & { folderId: string }
 
 export function CampaignManagement({
   campaigns,
   clients,
   agents,
+  folders,
 }: {
   campaigns: Option[]
-  clients: Option[]
+  clients: ClientOption[]
   agents: Option[]
+  folders: Option[]
 }) {
   const router = useRouter()
   const [message, setMessage] = useState('')
   const [pending, setPending] = useState(false)
   const [selectedClients, setSelectedClients] = useState<string[]>([])
   const [selectedAgents, setSelectedAgents] = useState<string[]>([])
+  const [selectedFolder, setSelectedFolder] = useState('')
+  const visibleClients = selectedFolder ? clients.filter(client => client.folderId === selectedFolder) : []
 
   function toggle(value: string, selected: string[], update: (values: string[]) => void) {
     update(selected.includes(value) ? selected.filter((id) => id !== value) : [...selected, value])
@@ -55,8 +60,8 @@ export function CampaignManagement({
     if (pending) return
     const data = new FormData(event.currentTarget)
     const campaignId = String(data.get('campaignId') || '')
-    if (!campaignId || !selectedClients.length || !selectedAgents.length) {
-      setMessage('Choisissez une campagne, au moins un client et au moins un agent.')
+    if (!campaignId || !selectedFolder || !selectedClients.length || !selectedAgents.length) {
+      setMessage('Choisissez une campagne, un dossier, au moins un client et au moins un agent.')
       return
     }
 
@@ -66,7 +71,7 @@ export function CampaignManagement({
       const response = await fetch('/api/campaigns/assign', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ campaignId, clientIds: selectedClients, agentIds: selectedAgents }),
+        body: JSON.stringify({ campaignId, folderId: selectedFolder, clientIds: selectedClients, agentIds: selectedAgents }),
       })
       const body = await response.json()
       if (!response.ok) throw new Error(body.error || 'Distribution impossible')
@@ -103,9 +108,16 @@ export function CampaignManagement({
               {campaigns.map((campaign) => <option key={campaign.id} value={campaign.id}>{campaign.label}</option>)}
             </select>
 
+            <label className="block text-sm font-black">1. Choisir le dossier
+              <select required value={selectedFolder} disabled={pending} onChange={event => { setSelectedFolder(event.target.value); setSelectedClients([]) }} className="mt-2 w-full rounded-xl border border-slate-200 p-3 font-normal">
+                <option value="">Choisir un dossier avant d’afficher les clients</option>
+                {folders.map(folder => <option key={folder.id} value={folder.id}>{folder.label}</option>)}
+              </select>
+            </label>
+
             <fieldset disabled={pending}>
               <div className="mb-2 flex items-center justify-between">
-                <legend className="text-sm font-black">1. Choisir les agents</legend>
+                <legend className="text-sm font-black">2. Choisir les agents</legend>
                 <button type="button" onClick={() => setSelectedAgents(selectedAgents.length === agents.length ? [] : agents.map((agent) => agent.id))} className="text-xs font-bold text-emerald-700">
                   {selectedAgents.length === agents.length && agents.length ? 'Tout retirer' : 'Tous les agents'}
                 </button>
@@ -118,14 +130,15 @@ export function CampaignManagement({
 
             <fieldset disabled={pending}>
               <div className="mb-2 flex items-center justify-between">
-                <legend className="text-sm font-black">2. Choisir les clients</legend>
-                <button type="button" onClick={() => setSelectedClients(selectedClients.length === clients.length ? [] : clients.map((client) => client.id))} className="text-xs font-bold text-emerald-700">
-                  {selectedClients.length === clients.length && clients.length ? 'Tout retirer' : 'Tous les clients'}
+                <legend className="text-sm font-black">3. Choisir les clients du dossier</legend>
+                <button type="button" disabled={!selectedFolder} onClick={() => setSelectedClients(selectedClients.length === visibleClients.length ? [] : visibleClients.map((client) => client.id))} className="text-xs font-bold text-emerald-700 disabled:text-slate-300">
+                  {selectedClients.length === visibleClients.length && visibleClients.length ? 'Tout retirer' : 'Tous les clients'}
                 </button>
               </div>
               <div className="max-h-52 space-y-1 overflow-y-auto rounded-xl border border-slate-200 p-2">
-                {clients.map((client) => <label key={client.id} className="flex cursor-pointer items-center gap-3 rounded-lg p-2 hover:bg-slate-50"><input type="checkbox" checked={selectedClients.includes(client.id)} onChange={() => toggle(client.id, selectedClients, setSelectedClients)} /><span className="text-sm">{client.label}</span></label>)}
-                {!clients.length && <p className="p-2 text-sm text-slate-500">Aucun client disponible.</p>}
+                {visibleClients.map((client) => <label key={client.id} className="flex cursor-pointer items-center gap-3 rounded-lg p-2 hover:bg-slate-50"><input type="checkbox" checked={selectedClients.includes(client.id)} onChange={() => toggle(client.id, selectedClients, setSelectedClients)} /><span className="text-sm">{client.label}</span></label>)}
+                {!selectedFolder && <p className="p-2 text-sm text-slate-500">Choisissez d’abord un dossier.</p>}
+                {selectedFolder && !visibleClients.length && <p className="p-2 text-sm text-slate-500">Ce dossier ne contient aucun client.</p>}
               </div>
             </fieldset>
 
