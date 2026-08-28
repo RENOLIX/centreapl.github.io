@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { isCurrentUserAdmin } from '@/lib/admin-auth'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { createClient } from '@/lib/supabase/server'
 
 export async function GET() {
   if (!await isCurrentUserAdmin()) return NextResponse.json({ error: 'Accès administrateur requis' }, { status: 403 })
@@ -11,10 +12,10 @@ export async function GET() {
 
 export async function POST(request: Request) {
   if (!await isCurrentUserAdmin()) return NextResponse.json({ error: 'Accès administrateur requis' }, { status: 403 })
-  const input = await request.json() as { email?: string; password?: string; fullName?: string; role?: 'admin' | 'agent'; code?: string }
+  const input = await request.json() as { email?: string; password?: string; fullName?: string; role?: 'admin' | 'supervisor' | 'agent'; code?: string }
   const email = input.email?.trim().toLowerCase()
   const fullName = input.fullName?.trim()
-  const role = input.role === 'admin' ? 'admin' : 'agent'
+  const role = input.role === 'admin' ? 'admin' : input.role === 'supervisor' ? 'supervisor' : 'agent'
   const code = input.code?.trim().toUpperCase()
   if (!email || !fullName || !input.password || input.password.length < 8 || (role === 'agent' && !code)) {
     return NextResponse.json({ error: 'Nom, email, mot de passe (8 caractères minimum) et code agent sont requis.' }, { status: 400 })
@@ -48,4 +49,17 @@ export async function PATCH(request: Request) {
   const admin = createAdminClient()
   const { error } = await admin.from('agents').update({ active: input.active }).eq('user_id', input.userId)
   return NextResponse.json(error ? { error: error.message } : { ok: true }, { status: error ? 500 : 200 })
+}
+
+export async function DELETE(request:Request){
+  if(!await isCurrentUserAdmin())return NextResponse.json({error:'Accès administrateur requis'},{status:403})
+  const input=await request.json() as {userId?:string}
+  if(!input.userId)return NextResponse.json({error:'Utilisateur requis'},{status:400})
+  const session=await createClient()
+  const {data:auth}=await session.auth.getUser()
+  if(auth.user?.id===input.userId)return NextResponse.json({error:'Vous ne pouvez pas supprimer votre propre compte'},{status:400})
+  const admin=createAdminClient()
+  await admin.from('agents').update({active:false}).eq('user_id',input.userId)
+  const {error}=await admin.auth.admin.deleteUser(input.userId)
+  return NextResponse.json(error?{error:error.message}:{ok:true},{status:error?500:200})
 }

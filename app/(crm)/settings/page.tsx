@@ -2,10 +2,13 @@ import Link from 'next/link'
 import { ShieldCheck, UserRound, Users } from 'lucide-react'
 import { createClient } from '@/lib/supabase/server'
 import { AgentManagement } from '@/components/crm/agent-management'
+import { getCurrentRole } from '@/lib/admin-auth'
+import { redirect } from 'next/navigation'
 
 export const dynamic = 'force-dynamic'
 
 export default async function SettingsPage() {
+  if(await getCurrentRole()!=='admin')redirect('/dashboard')
   const supabase = await createClient()
   const { data: authData } = await supabase.auth.getUser()
   const authUser = authData.user

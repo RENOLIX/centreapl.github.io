@@ -3,11 +3,14 @@ import { Search, Phone, ChevronRight } from 'lucide-react'
 import { telHref } from '@/lib/validators'
 import { createClient } from '@/lib/supabase/server'
 import { ClientManagement } from '@/components/crm/client-management'
+import { getCurrentRole } from '@/lib/admin-auth'
+import { redirect } from 'next/navigation'
 
 export const dynamic='force-dynamic'
 type Client={id:string;first_name:string;last_name:string;phone:string;city:string}
 
 export default async function ClientsPage({searchParams}:{searchParams:Promise<{q?:string}>}){
+  if(await getCurrentRole()==='agent')redirect('/work')
   const {q=''}=await searchParams
   let data:Client[]=[];let count=0
   try{const supabase=await createClient();let query=supabase.from('clients').select('id,first_name,last_name,phone,city',{count:'exact'}).order('created_at',{ascending:false});const clean=q.trim().replace(/[,%()]/g,'');if(clean)query=query.or(`first_name.ilike.%${clean}%,last_name.ilike.%${clean}%,phone.ilike.%${clean}%,city.ilike.%${clean}%`);const result=await query;data=(result.data??[]) as Client[];count=result.count??0}catch{}

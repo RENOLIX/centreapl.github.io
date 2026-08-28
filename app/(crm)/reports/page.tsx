@@ -1,13 +1,13 @@
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
-import { isCurrentUserAdmin } from '@/lib/admin-auth'
+import { isCurrentUserManagement } from '@/lib/admin-auth'
 import { CsvExport } from '@/components/crm/csv-export'
 
 export const dynamic='force-dynamic'
 type CallRow={id:string;called_at:string;duration_seconds:number;summary:string;clients:{first_name:string;last_name:string;phone:string}|null;agents:{code:string;users:{full_name:string}|null}|null;call_results:{label:string;is_success:boolean;is_sale:boolean}|null;campaigns:{name:string}|null}
 
 export default async function Reports({searchParams}:{searchParams:Promise<{from?:string;to?:string}>}){
-  if(!await isCurrentUserAdmin()) redirect('/dashboard')
+  if(!await isCurrentUserManagement()) redirect('/dashboard')
   const {from,to}=await searchParams
   const supabase=await createClient()
   let query=supabase.from('calls').select('id,called_at,duration_seconds,summary,clients(first_name,last_name,phone),agents(code,users(full_name)),call_results(label,is_success,is_sale),campaigns(name)').order('called_at',{ascending:false}).limit(2000)

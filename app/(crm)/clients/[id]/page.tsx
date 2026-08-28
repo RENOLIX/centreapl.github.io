@@ -2,8 +2,11 @@ import { createClient } from '@/lib/supabase/server'
 import { notFound } from 'next/navigation'
 import { Phone } from 'lucide-react'
 import { ClientActions } from '@/components/crm/client-actions'
+import { getCurrentRole } from '@/lib/admin-auth'
+import { redirect } from 'next/navigation'
 
 export default async function ClientPage({params}:{params:Promise<{id:string}>}){
+  if(await getCurrentRole()==='agent')redirect('/work')
   const {id}=await params
   const supabase=await createClient()
   const [{data:client,error},{data:results},{data:notes},{data:calls},{data:callbacks},{data:auth}]=await Promise.all([
