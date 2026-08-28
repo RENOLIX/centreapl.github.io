@@ -83,8 +83,8 @@ export function CampaignManagement({
 
   return (
     <div className="space-y-3">
-      <div className="grid gap-3 lg:grid-cols-2">
-        <details className="card p-4">
+      <div className="grid items-start gap-3 lg:grid-cols-2">
+        <details className="card self-start p-4">
           <summary className="cursor-pointer font-bold">Créer une campagne</summary>
           <form onSubmit={create} className="mt-4 space-y-3">
             <input required name="name" disabled={pending} placeholder="Nom de la campagne" className="w-full rounded-xl border border-slate-200 p-3" />
@@ -95,7 +95,7 @@ export function CampaignManagement({
           </form>
         </details>
 
-        <details className="card p-4" open>
+        <details className="card self-start p-4" open>
           <summary className="cursor-pointer font-bold">Affecter des clients aux agents choisis</summary>
           <form onSubmit={assign} className="mt-4 space-y-4">
             <select required name="campaignId" disabled={pending} className="w-full rounded-xl border border-slate-200 p-3">
