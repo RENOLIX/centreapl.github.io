@@ -74,7 +74,7 @@ export function ClientAdminActions({ client }: { client: Client }) {
               <input name="commune" defaultValue={metadataValue('commune')} placeholder="Commune" className="rounded-xl border border-slate-200 p-3" />
               <input name="wilaya" defaultValue={metadataValue('wilaya')} placeholder="Wilaya" className="rounded-xl border border-slate-200 p-3" />
               <input name="total" defaultValue={metadataValue('total')} placeholder="Total" className="rounded-xl border border-slate-200 p-3" />
-              <input name="product" defaultValue={metadataValue('produit')} placeholder="Produit" className="rounded-xl border border-slate-200 p-3" />
+              <input name="product" defaultValue={metadataValue('produit')} placeholder="Produits" className="rounded-xl border border-slate-200 p-3" />
             </div>
             <button disabled={pending} className="btn btn-primary mt-5 w-full justify-center">{pending && <Loader2 size={16} className="animate-spin" />}Enregistrer les modifications</button>
           </form>
