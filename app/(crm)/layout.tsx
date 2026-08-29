@@ -6,6 +6,7 @@ import { redirect } from 'next/navigation'
 import { PresenceHeartbeat } from '@/components/crm/presence-heartbeat'
 import { createClient } from '@/lib/supabase/server'
 import Link from 'next/link'
+import { EmergencyNotifier } from '@/components/crm/emergency-notifier'
 
 function initials(name: string) {
   return name
@@ -23,17 +24,17 @@ export default async function CrmLayout({ children }: { children: React.ReactNod
   const role = profile.role || 'agent'
   const accountName = profile.fullName
   const supabase = await createClient()
-  const [callbackResult,workResult,pauseResult]=await Promise.all([
-    supabase.from('callbacks').select('*',{count:'exact',head:true}).eq('status','scheduled'),
+  const [workResult,pauseResult,emergencyResult]=await Promise.all([
     role==='agent'?supabase.from('client_assignments').select('*',{count:'exact',head:true}).eq('status','active'):Promise.resolve({count:0}),
     role!=='agent'?supabase.from('pause_sessions').select('*',{count:'exact',head:true}).is('ended_at',null):Promise.resolve({count:0}),
+    role!=='agent'?supabase.from('emergency_alerts').select('*',{count:'exact',head:true}).is('acknowledged_at',null):Promise.resolve({count:0}),
   ])
-  const visibleCallbackNotifications=role==='agent'?0:(callbackResult.count??0)
-  const badges={callbacks:visibleCallbackNotifications,work:workResult.count??0,pauses:pauseResult.count??0,notifications:visibleCallbackNotifications+(workResult.count??0)+(pauseResult.count??0)}
+  const badges={callbacks:0,work:workResult.count??0,pauses:pauseResult.count??0,notifications:emergencyResult.count??0}
 
   return (
     <div className="flex min-h-screen bg-[#edf1f4]">
       <PresenceHeartbeat isAgent={role === 'agent'} />
+      <EmergencyNotifier userId={profile.id} role={role} />
       <Sidebar role={role} badges={badges} />
       <div className="min-w-0 flex-1 pb-20 lg:pb-0">
         <header className="flex h-12 items-center justify-between bg-[#242424] px-4 text-white shadow-sm">

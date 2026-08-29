@@ -3,6 +3,7 @@
 import { FormEvent, useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { CheckCircle2, Phone } from 'lucide-react'
+import { EmergencyButton } from './emergency-button'
 
 type Result = { id: string; label: string }
 type WorkClient = {
@@ -80,6 +81,7 @@ export function AgentWorkstation({ client, results }: { client: WorkClient; resu
       <button disabled={!called || pending} className="btn btn-primary mt-3 w-full justify-center disabled:cursor-not-allowed disabled:opacity-40">{pending ? 'Chargement…' : 'Enregistrer et client suivant'}</button>
       {!called && !pending && <p className="mt-2 text-center text-[10px] text-slate-400">Cliquez d’abord sur Appeler.</p>}
       {message && <p className="mt-3 text-sm font-bold text-amber-700">{message}</p>}
+      <EmergencyButton />
     </form>
   </div>
 }

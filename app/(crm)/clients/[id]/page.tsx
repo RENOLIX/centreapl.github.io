@@ -6,7 +6,7 @@ import { getCurrentRole } from '@/lib/admin-auth'
 import { redirect } from 'next/navigation'
 
 export default async function ClientPage({params}:{params:Promise<{id:string}>}){
-  if(await getCurrentRole()==='agent')redirect('/work')
+  if(await getCurrentRole()!=='admin')redirect('/dashboard')
   const {id}=await params
   const supabase=await createClient()
   const [{data:client,error},{data:results},{data:notes},{data:calls},{data:callbacks},{data:auth}]=await Promise.all([

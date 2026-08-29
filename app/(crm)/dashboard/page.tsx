@@ -4,6 +4,7 @@ import { DashboardLiveRefresh } from '@/components/crm/dashboard-live-refresh'
 import Link from 'next/link'
 import type { ReactNode } from 'react'
 import { PauseTotalTicker } from '@/components/crm/pause-total-ticker'
+import { algiersDayRange } from '@/lib/dates'
 
 export const dynamic = 'force-dynamic'
 
@@ -25,24 +26,28 @@ export default async function Dashboard() {
   const profile = auth.user ? await supabase.from('users').select('role').eq('id', auth.user.id).maybeSingle() : null
   const role = profile?.data?.role as 'admin' | 'supervisor' | 'agent' | undefined
   const isManagement = role === 'admin' || role === 'supervisor'
+  const day=algiersDayRange()
   let values = [0, 0, 0, 0, 0]
   let performance: AgentPerformance[] = []
   let campaigns: Campaign[] = []
   let pausedAgents = 0
 
   try {
-    const [clients, calls, successes, callbacks, sales, agents, campaignRows, activePauses] = await Promise.all([
-      supabase.from('clients').select('*', { count: 'exact', head: true }),
-      supabase.from('calls').select('*', { count: 'exact', head: true }),
-      supabase.from('calls').select('id,call_results!inner(is_success)', { count: 'exact', head: true }).eq('call_results.is_success', true),
-      supabase.from('callbacks').select('*', { count: 'exact', head: true }).eq('status', 'scheduled'),
-      supabase.from('calls').select('id,call_results!inner(is_sale)', { count: 'exact', head: true }).eq('call_results.is_sale', true),
-      isManagement ? supabase.from('agents').select('id,code,active,last_seen_at,users!inner(full_name,email,role),calls(id,duration_seconds,call_results(is_success,is_sale)),callbacks(id,status)').eq('users.role', 'agent').order('created_at', { ascending: true }) : Promise.resolve({ data: [] }),
+    const [clients, calls, successes, callbacks, sales, agents, todayAgentCalls, todayAgentCallbacks, campaignRows, activePauses] = await Promise.all([
+      supabase.from('clients').select('*', { count: 'exact', head: true }).gte('created_at',day.start).lt('created_at',day.end),
+      supabase.from('calls').select('*', { count: 'exact', head: true }).gte('called_at',day.start).lt('called_at',day.end),
+      supabase.from('calls').select('id,call_results!inner(is_success)', { count: 'exact', head: true }).eq('call_results.is_success', true).gte('called_at',day.start).lt('called_at',day.end),
+      supabase.from('callbacks').select('*', { count: 'exact', head: true }).eq('status', 'scheduled').gte('scheduled_for',day.start).lt('scheduled_for',day.end),
+      supabase.from('calls').select('id,call_results!inner(is_sale)', { count: 'exact', head: true }).eq('call_results.is_sale', true).gte('called_at',day.start).lt('called_at',day.end),
+      isManagement ? supabase.from('agents').select('id,code,active,last_seen_at,users!inner(full_name,email,role)').eq('users.role', 'agent').order('created_at', { ascending: true }) : Promise.resolve({ data: [] }),
+      isManagement ? supabase.from('calls').select('id,agent_id,duration_seconds,call_results(is_success,is_sale)').gte('called_at',day.start).lt('called_at',day.end) : Promise.resolve({data:[]}),
+      isManagement ? supabase.from('callbacks').select('id,agent_id,status').gte('scheduled_for',day.start).lt('scheduled_for',day.end) : Promise.resolve({data:[]}),
       supabase.from('campaigns').select('id,name,active,client_assignments(id)').eq('active', true).order('created_at', { ascending: false }).limit(5),
       isManagement?supabase.from('pause_sessions').select('*',{count:'exact',head:true}).is('ended_at',null):Promise.resolve({count:0}),
     ])
     values = [clients.count ?? 0, calls.count ?? 0, successes.count ?? 0, callbacks.count ?? 0, sales.count ?? 0]
-    performance = (agents.data ?? []) as unknown as AgentPerformance[]
+    const agentCalls=(todayAgentCalls.data??[]) as unknown as Array<AgentPerformance['calls'][number]&{agent_id:string}>;const agentCallbacks=(todayAgentCallbacks.data??[]) as unknown as Array<AgentPerformance['callbacks'][number]&{agent_id:string}>
+    performance = ((agents.data ?? []) as unknown as Omit<AgentPerformance,'calls'|'callbacks'>[]).map(agent=>({...agent,calls:agentCalls.filter(call=>call.agent_id===agent.id),callbacks:agentCallbacks.filter(callback=>callback.agent_id===agent.id)}))
     campaigns = (campaignRows.data ?? []) as unknown as Campaign[]
     pausedAgents = activePauses.count ?? 0
   } catch {}
@@ -59,26 +64,25 @@ export default async function Dashboard() {
   if (role === 'agent' && auth.user) {
     const { data: agent } = await supabase.from('agents').select('id').eq('user_id', auth.user.id).maybeSingle()
     if (agent) {
-      const today = new Date(); today.setHours(0, 0, 0, 0)
-      const { data: pauses } = await supabase.from('pause_sessions').select('started_at,ended_at').eq('agent_id', agent.id).gte('started_at', today.toISOString())
+      const { data: pauses } = await supabase.from('pause_sessions').select('started_at,ended_at').eq('agent_id', agent.id).gte('started_at', day.start).lt('started_at',day.end)
       ownPauseSeconds = Math.floor((pauses ?? []).reduce((total, row) => total + Math.max(0, new Date(row.ended_at || Date.now()).getTime() - new Date(row.started_at).getTime()), 0) / 1000)
       ownPauseRunning = (pauses??[]).some(row=>!row.ended_at)
     }
   }
 
   const tiles:Array<{label:string;value:ReactNode;Icon:typeof Contact;color:string;href?:string}> = [
-    { label: 'Contacts accessibles', value: clientsCount, Icon: Contact, color: '#673ab7' },
-    { label: 'Appels terminés enregistrés', value: callsCount, Icon: PhoneCall, color: '#7447c8' },
-    { label: 'Rappels programmés', value: callbackCount, Icon: Clock3, color: '#009688' },
-    { label: 'Appels réussis', value: successCount, Icon: CheckCircle2, color: '#16a9d5' },
-    { label: 'Sans succès', value: unsuccessful, Icon: XCircle, color: '#049b89' },
+    { label: 'Contacts créés aujourd’hui', value: clientsCount, Icon: Contact, color: '#673ab7' },
+    { label: 'Appels terminés aujourd’hui', value: callsCount, Icon: PhoneCall, color: '#7447c8' },
+    { label: 'Rappels prévus aujourd’hui', value: callbackCount, Icon: Clock3, color: '#009688' },
+    { label: 'Appels réussis aujourd’hui', value: successCount, Icon: CheckCircle2, color: '#16a9d5' },
+    { label: 'Sans succès aujourd’hui', value: unsuccessful, Icon: XCircle, color: '#049b89' },
   ]
   if (isManagement) tiles.push({label:'Agents actuellement en pause',value:pausedAgents,Icon:Clock3,color:'#ef6c00',href:'/pauses'})
   if (role === 'agent') tiles.push({ label: 'Pause aujourd’hui (HH:MM:SS)', value: <PauseTotalTicker initialSeconds={ownPauseSeconds} running={ownPauseRunning}/>, Icon: Clock3, color: '#ef6c00',href:'/pauses' })
 
   return <div className="space-y-4">
-    {isManagement && <DashboardLiveRefresh />}
-    <div className="border-b border-slate-300 pb-3"><h1 className="text-xl font-normal text-slate-600">Dashboard</h1><p className="mt-1 text-[10px] uppercase tracking-wider text-slate-400">Données réelles · historique des appels terminés</p></div>
+    <DashboardLiveRefresh />
+    <div className="border-b border-slate-300 pb-3"><h1 className="text-xl font-normal text-slate-600">Dashboard</h1><p className="mt-1 text-[10px] uppercase tracking-wider text-slate-400">Données réelles de la journée · remise à zéro chaque jour à minuit (Algérie)</p></div>
     <div className="grid gap-3 xl:grid-cols-12">
       <div className="space-y-3 xl:col-span-9">
         <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">{tiles.map(({label,value,Icon,color,href})=>{const content=<><div className="grid w-16 shrink-0 place-items-center border-r border-white/15 bg-black/5"><Icon size={30} strokeWidth={1.5}/></div><div className="flex flex-1 flex-col justify-center px-4"><p className="text-3xl font-light leading-none">{value}</p><p className="mt-2 text-[11px] text-white/85">{label}</p></div></>;return href?<Link key={label} href={href} className="flex min-h-24 overflow-hidden border border-black/5 text-white shadow-sm transition hover:brightness-105" style={{backgroundColor:color}}>{content}</Link>:<div key={label} className="flex min-h-24 overflow-hidden border border-black/5 text-white shadow-sm" style={{backgroundColor:color}}>{content}</div>})}</section>

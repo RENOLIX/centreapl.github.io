@@ -11,7 +11,7 @@ type Client = { id:string; first_name:string; last_name:string; phone:string; em
 
 export default async function FolderClientsPage({ params, searchParams }: { params:Promise<{id:string}>; searchParams:Promise<{q?:string}> }) {
   const role = await getCurrentRole()
-  if (role === 'agent') redirect('/work')
+  if (role !== 'admin') redirect('/dashboard')
   const { id } = await params
   const { q = '' } = await searchParams
   const supabase = await createClient()

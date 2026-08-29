@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import { getCurrentRole } from '@/lib/admin-auth'
 import { CampaignManagement } from '@/components/crm/campaign-management'
 import { CampaignActions } from '@/components/crm/campaign-actions'
+import { redirect } from 'next/navigation'
 
 export const dynamic='force-dynamic'
 type Campaign={id:string;name:string;description:string;active:boolean;client_assignments:{client_id:string}[];calls:{id:string}[]}
@@ -11,7 +12,8 @@ type AgentOption={id:string;code:string;active:boolean;users:{full_name:string;r
 export default async function Campaigns(){
   const supabase=await createClient()
   const role=await getCurrentRole()
-  const isManagement=role==='admin'||role==='supervisor'
+  if(role!=='admin')redirect('/dashboard')
+  const isManagement=true
   const [{data,error},{data:clients},{data:agentRows},{data:folders}]=await Promise.all([
     supabase.from('campaigns').select('id,name,description,active,client_assignments(client_id),calls(id)').order('created_at',{ascending:false}),
     isManagement?supabase.from('clients').select('id,first_name,last_name,phone,folder_id').order('created_at',{ascending:false}).limit(2000):Promise.resolve({data:[]}),

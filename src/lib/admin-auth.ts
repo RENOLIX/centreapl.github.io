@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 export type CrmRole = 'admin' | 'supervisor' | 'agent'
 
 export type CurrentProfile = {
+  id: string
   role: CrmRole | null
   fullName: string
   email: string
@@ -23,6 +24,7 @@ export async function getCurrentProfile(): Promise<CurrentProfile | null> {
   const metadataName = data.user.user_metadata?.full_name
 
   return {
+    id: data.user.id,
     role: (profile?.role as CrmRole | undefined) ?? null,
     fullName:
       profile?.full_name?.trim() ||

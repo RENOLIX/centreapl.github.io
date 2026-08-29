@@ -11,7 +11,7 @@ type FolderRow = { id:string; name:string; clients:{count:number}[] }
 
 export default async function ClientsPage() {
   const role = await getCurrentRole()
-  if (role === 'agent') redirect('/work')
+  if (role !== 'admin') redirect('/dashboard')
   const supabase = await createClient()
   const [{ data: folderRows }, { count: total }, { count: unfiledCount }] = await Promise.all([
     supabase.from('client_folders').select('id,name,clients(count)').order('name'),

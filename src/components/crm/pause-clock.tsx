@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { Coffee, Loader2, Square, Utensils } from 'lucide-react'
+import { createClient } from '@/lib/supabase/browser'
 
 type OpenPause = { id: string; pause_type: string; started_at: string }
 
@@ -13,7 +14,7 @@ function duration(ms: number) {
   return [h, m, s].map((value) => String(value).padStart(2, '0')).join(':')
 }
 
-export function PauseClock({ open }: { open: OpenPause | null }) {
+export function PauseClock({ agentId, open, completedSeconds }: { agentId:string;open: OpenPause | null;completedSeconds:number }) {
   const [currentPause, setCurrentPause] = useState<OpenPause | null>(open)
   const [now, setNow] = useState(Date.now())
   const [pending, setPending] = useState<'coffee' | 'lunch' | 'stop' | null>(null)
@@ -24,6 +25,9 @@ export function PauseClock({ open }: { open: OpenPause | null }) {
     const timer = window.setInterval(() => setNow(Date.now()), 1000)
     return () => window.clearInterval(timer)
   }, [])
+  useEffect(()=>{if(!agentId)return;const supabase=createClient();const channel=supabase.channel(`own-pause-${agentId}`).on('postgres_changes',{event:'*',schema:'public',table:'pause_sessions',filter:`agent_id=eq.${agentId}`},payload=>{const row=(payload.new||payload.old) as {id:string;pause_type:string;started_at:string;ended_at:string|null};if(payload.eventType==='INSERT'&&!row.ended_at)setCurrentPause({id:row.id,pause_type:row.pause_type,started_at:row.started_at});if(payload.eventType==='UPDATE'&&row.ended_at)setCurrentPause(current=>current?.id===row.id?null:current);setNow(Date.now())}).subscribe();return()=>{void supabase.removeChannel(channel)}},[agentId])
+
+  const runningSeconds=currentPause?Math.max(0,Math.floor((now-new Date(currentPause.started_at).getTime())/1000)):0
 
   async function start(type: 'coffee' | 'lunch') {
     if (pending || currentPause) return
@@ -66,6 +70,7 @@ export function PauseClock({ open }: { open: OpenPause | null }) {
 
   return (
     <div className="space-y-4">
+      <div className="card p-4"><p className="text-xs uppercase text-slate-400">Temps de pause aujourd’hui</p><p className="mt-2 font-mono text-3xl font-black">{duration((completedSeconds+runningSeconds)*1000)}</p></div>
       {currentPause && (
         <div className="card border-l-4 border-l-orange-500 p-5 text-center">
           <p className="text-xs font-bold uppercase text-orange-600">
