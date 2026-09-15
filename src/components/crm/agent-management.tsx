@@ -14,7 +14,7 @@ export function AgentManagement() {
   const load = useCallback(async () => {
     setLoading(true)
     const response = await fetch('/api/admin/agents', { cache: 'no-store' })
-    const body = await response.json()
+    const body = await response.json().catch(() => ({}))
     setMessage(response.ok ? '' : body.error || 'Chargement impossible')
     setUsers(body.users || [])
     setLoading(false)
@@ -31,11 +31,12 @@ export function AgentManagement() {
     const role = String(form.get('role'))
     try {
       const response = await fetch('/api/admin/agents', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ fullName: form.get('fullName'), email: form.get('email'), password: form.get('password'), role, code: role === 'agent' ? form.get('code') : undefined }) })
-      const body = await response.json()
+      const body = await response.json().catch(() => ({}))
       if (!response.ok) throw new Error(body.error || 'Création impossible')
-      setUsers((current) => [body.user, ...current.filter((user) => user.id !== body.user.id)])
+      if(body.user)setUsers((current) => [body.user, ...current.filter((user) => user.id !== body.user.id)])
       event.currentTarget.reset()
       setMessage('Compte créé avec succès. Il est déjà visible dans la liste.')
+      await load()
     } catch (error) {
       setMessage(error instanceof Error ? error.message : 'Création impossible')
     } finally {

@@ -48,8 +48,8 @@ export async function POST(request: Request) {
     .eq('id', userId)
     .single()
 
-  if (readError) return NextResponse.json({ error: readError.message }, { status: 500 })
-  return NextResponse.json({ user }, {
+  // La création a déjà réussi : ne jamais la présenter comme un échec si la relecture est momentanément retardée.
+  return NextResponse.json({ user: user || { id:userId, full_name:fullName, email, role, agents: role==='agent' ? [{id:'',code,active:true}] : [] }, created: true }, {
     status: 201,
     headers: { 'Cache-Control': 'no-store' },
   })
