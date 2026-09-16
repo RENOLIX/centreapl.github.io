@@ -4,31 +4,28 @@ import { getCurrentRole } from '@/lib/admin-auth'
 import { CampaignManagement } from '@/components/crm/campaign-management'
 import { CampaignActions } from '@/components/crm/campaign-actions'
 import { redirect } from 'next/navigation'
+import { fetchAllRows } from '@/lib/supabase-pagination'
 
 export const dynamic='force-dynamic'
-type Campaign={id:string;name:string;description:string;active:boolean;client_assignments:{client_id:string}[];calls:{id:string}[]}
+type Campaign={id:string;name:string;description:string;active:boolean}
 type AgentOption={id:string;code:string;active:boolean;users:{full_name:string;role:string}|null}
+type ClientRow={id:string;first_name:string;last_name:string;phone:string;folder_id:string|null}
 
 export default async function Campaigns(){
-  const supabase=await createClient()
-  const role=await getCurrentRole()
-  if(role!=='admin')redirect('/dashboard')
-  const isManagement=true
-  const [{data,error},{data:clients},{data:agentRows},{data:folders}]=await Promise.all([
-    supabase.from('campaigns').select('id,name,description,active,client_assignments(client_id),calls(id)').order('created_at',{ascending:false}),
-    isManagement?supabase.from('clients').select('id,first_name,last_name,phone,folder_id').order('created_at',{ascending:false}).limit(2000):Promise.resolve({data:[]}),
-    isManagement?supabase.from('agents').select('id,code,active,users(full_name,role)').eq('active',true).order('code'):Promise.resolve({data:[]}),
-    isManagement?supabase.from('client_folders').select('id,name').order('name'):Promise.resolve({data:[]}),
+  const supabase=await createClient();const role=await getCurrentRole();if(role!=='admin')redirect('/dashboard')
+  const [campaignResult,clientRows,agentResult,folderResult,assignments,callRows]=await Promise.all([
+    supabase.from('campaigns').select('id,name,description,active').order('created_at',{ascending:false}),
+    fetchAllRows<ClientRow>(async(from,to)=>await supabase.from('clients').select('id,first_name,last_name,phone,folder_id').order('created_at',{ascending:false}).range(from,to) as unknown as {data:ClientRow[]|null;error:{message:string}|null}),
+    supabase.from('agents').select('id,code,active,users(full_name,role)').eq('active',true).order('code'),
+    fetchAllRows<{id:string;name:string}>(async(from,to)=>await supabase.from('client_folders').select('id,name').order('name').range(from,to) as unknown as {data:{id:string;name:string}[]|null;error:{message:string}|null}),
+    fetchAllRows<{campaign_id:string}>(async(from,to)=>await supabase.from('client_assignments').select('campaign_id').range(from,to) as unknown as {data:{campaign_id:string}[]|null;error:{message:string}|null}),
+    fetchAllRows<{campaign_id:string}>(async(from,to)=>await supabase.from('calls').select('campaign_id').range(from,to) as unknown as {data:{campaign_id:string}[]|null;error:{message:string}|null}),
   ])
-  const campaigns=(data??[]) as unknown as Campaign[]
-  const clientOptions=(clients??[]).map(client=>({id:client.id,label:`${client.first_name} ${client.last_name} · ${client.phone}`,folderId:client.folder_id||'__unfiled__'}))
-  const folderOptions=[...(folders??[]).map(folder=>({id:folder.id,label:folder.name} as {id:string;label:string})),...((clients??[]).some(client=>!client.folder_id)?[{id:'__unfiled__',label:'Sans dossier (anciens clients)'}]:[])]
-  const agentOptions=((agentRows??[]) as unknown as AgentOption[])
-    .filter(agent=>agent.users?.role==='agent')
-    .map(agent=>({id:agent.id,label:`${agent.users?.full_name||agent.code} · ${agent.code}`}))
-  return <div className="space-y-6">
-    <div><h1 className="text-2xl font-black">Campagnes</h1><p className="mt-1 text-sm text-slate-500">Listes de prospection, scripts et distribution équilibrée.</p></div>
-    {isManagement&&<CampaignManagement campaigns={campaigns.filter(c=>c.active).map(c=>({id:c.id,label:c.name}))} clients={clientOptions} agents={agentOptions} folders={folderOptions}/>}
-    <div className="grid items-start gap-4 md:grid-cols-2">{campaigns.map(campaign=>{const assigned=campaign.client_assignments?.length??0;const calls=campaign.calls?.length??0;const progress=assigned?Math.min(100,Math.round(calls/assigned*100)):0;return <div className="card self-start p-6" key={campaign.id}><p className="text-xs font-bold uppercase tracking-wider text-amber-700">{campaign.active?'Active':'Suspendue'}</p><h2 className="mt-2 text-lg font-black">{campaign.name}</h2>{campaign.description&&<p className="mt-2 whitespace-pre-wrap text-sm text-slate-600">{campaign.description}</p>}<p className="mt-3 text-sm text-slate-500">{assigned} clients · {calls} appels · {progress}% traités</p><div className="mt-5 h-2 rounded-full bg-slate-100"><div className="h-2 rounded-full bg-amber-400" style={{width:`${progress}%`}}/></div><CampaignActions campaign={campaign}/></div>})}{!campaigns.length&&<div className="card col-span-full flex flex-col items-center px-5 py-12 text-center"><Megaphone className="text-slate-300" size={34}/><p className="mt-3 font-bold">{error?'Base CRM indisponible':'Aucune campagne créée'}</p><p className="mt-1 text-sm text-slate-500">{error?error.message:'Créez la première campagne depuis le formulaire.'}</p></div>}</div>
-  </div>
+  const campaigns=(campaignResult.data??[]) as unknown as Campaign[]
+  const assignedByCampaign=assignments.reduce<Record<string,number>>((all,row)=>{if(row.campaign_id)all[row.campaign_id]=(all[row.campaign_id]||0)+1;return all},{})
+  const callsByCampaign=callRows.reduce<Record<string,number>>((all,row)=>{if(row.campaign_id)all[row.campaign_id]=(all[row.campaign_id]||0)+1;return all},{})
+  const clientOptions=clientRows.map(client=>({id:client.id,label:`${client.first_name} ${client.last_name} · ${client.phone}`,folderId:client.folder_id||'__unfiled__'}))
+  const folderOptions=[...folderResult.map(folder=>({id:folder.id,label:folder.name})),...(clientRows.some(client=>!client.folder_id)?[{id:'__unfiled__',label:'Sans dossier (anciens clients)'}]:[])]
+  const agentOptions=((agentResult.data??[]) as unknown as AgentOption[]).filter(agent=>agent.users?.role==='agent').map(agent=>({id:agent.id,label:`${agent.users?.full_name||agent.code} · ${agent.code}`}))
+  return <div className="space-y-6"><div><h1 className="text-2xl font-black">Campagnes</h1><p className="mt-1 text-sm text-slate-500">Listes de prospection, scripts et distribution équilibrée.</p></div><CampaignManagement campaigns={campaigns.filter(c=>c.active).map(c=>({id:c.id,label:c.name}))} clients={clientOptions} agents={agentOptions} folders={folderOptions}/><div className="grid items-start gap-4 md:grid-cols-2">{campaigns.map(campaign=>{const assigned=assignedByCampaign[campaign.id]||0;const calls=callsByCampaign[campaign.id]||0;const progress=assigned?Math.min(100,Math.round(calls/assigned*100)):0;return <div className="card self-start p-6" key={campaign.id}><p className="text-xs font-bold uppercase tracking-wider text-amber-700">{campaign.active?'Active':'Suspendue'}</p><h2 className="mt-2 text-lg font-black">{campaign.name}</h2>{campaign.description&&<p className="mt-2 whitespace-pre-wrap text-sm text-slate-600">{campaign.description}</p>}<p className="mt-3 text-sm text-slate-500">{assigned} clients · {calls} appels · {progress}% traités</p><div className="mt-5 h-2 rounded-full bg-slate-100"><div className="h-2 rounded-full bg-amber-400" style={{width:`${progress}%`}}/></div><CampaignActions campaign={campaign}/></div>})}{!campaigns.length&&<div className="card col-span-full flex flex-col items-center px-5 py-12 text-center"><Megaphone className="text-slate-300" size={34}/><p className="mt-3 font-bold">{campaignResult.error?'Base CRM indisponible':'Aucune campagne créée'}</p><p className="mt-1 text-sm text-slate-500">{campaignResult.error?campaignResult.error.message:'Créez la première campagne depuis le formulaire.'}</p></div>}</div></div>
 }
