@@ -2,7 +2,7 @@
 
 import { FormEvent, useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { CheckCircle2, Phone } from 'lucide-react'
+import { CheckCircle2 } from 'lucide-react'
 import { EmergencyButton } from './emergency-button'
 
 type Result = { id: string; label: string }
@@ -21,14 +21,12 @@ type WorkClient = {
 export function AgentWorkstation({ client, results }: { client: WorkClient; results: Result[] }) {
   const router = useRouter()
   const [message, setMessage] = useState('')
-  const [called, setCalled] = useState(false)
   const [pending, setPending] = useState(false)
   const [selectedResult, setSelectedResult] = useState('')
   const needsCallback = useMemo(() => results.find(result => result.id === selectedResult)?.label.toLocaleLowerCase('fr').includes('rappeler') ?? false, [results, selectedResult])
 
   useEffect(() => {
     setMessage('')
-    setCalled(false)
     setPending(false)
     setSelectedResult('')
   }, [client.id])
@@ -72,7 +70,6 @@ export function AgentWorkstation({ client, results }: { client: WorkClient; resu
         </div>
         {details.length > 0 && <div className="mt-4 grid gap-3 sm:grid-cols-2">{details.map(([key, value]) => <div key={key} className="rounded-lg bg-slate-50 p-3"><p className="text-[10px] font-bold uppercase text-slate-400">{labels[key] || key}</p><p className="mt-1 text-sm font-semibold">{String(value)}</p></div>)}</div>}
         {client.campaign_script && <div className="mt-5 border-l-4 border-cyan-500 bg-cyan-50 p-4"><p className="text-xs font-black uppercase text-cyan-800">Script</p><p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-slate-700">{client.campaign_script}</p></div>}
-        <a onClick={() => setCalled(true)} href={`tel:${client.phone.replace(/[^\d+]/g, '')}`} className="btn btn-primary mt-6 text-base"><Phone size={18} />Appeler</a>
       </div>
     </section>
     <form onSubmit={finish} className="card p-5">
@@ -81,8 +78,7 @@ export function AgentWorkstation({ client, results }: { client: WorkClient; resu
       <select name="resultId" required disabled={pending} value={selectedResult} onChange={event=>setSelectedResult(event.target.value)} className="mt-5 w-full border border-slate-200 p-3"><option value="">Statut de l’appel</option>{results.map(result => <option key={result.id} value={result.id}>{result.label}</option>)}</select>
       {needsCallback && <label className="mt-3 block text-xs font-bold text-emerald-700">Date et heure du rappel<input name="scheduledFor" required type="datetime-local" disabled={pending} className="mt-1 w-full border border-emerald-200 p-3 text-sm text-slate-700" /></label>}
       <textarea name="summary" disabled={pending} placeholder="Résumé / note" className="mt-3 min-h-28 w-full border border-slate-200 p-3" />
-      <button disabled={!called || pending} className="btn btn-primary mt-3 w-full justify-center disabled:cursor-not-allowed disabled:opacity-40">{pending ? 'Chargement…' : 'Enregistrer et client suivant'}</button>
-      {!called && !pending && <p className="mt-2 text-center text-[10px] text-slate-400">Cliquez d’abord sur Appeler.</p>}
+      <button disabled={pending} className="btn btn-primary mt-3 w-full justify-center disabled:cursor-not-allowed disabled:opacity-40">{pending ? 'Chargement…' : 'Enregistrer et client suivant'}</button>
       {message && <p className="mt-3 text-sm font-bold text-amber-700">{message}</p>}
       <EmergencyButton />
     </form>
