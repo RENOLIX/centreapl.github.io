@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { Coffee, Loader2, Square, Utensils } from 'lucide-react'
 import { createClient } from '@/lib/supabase/browser'
 
@@ -16,16 +16,39 @@ function duration(ms: number) {
 
 export function PauseClock({ agentId, open, completedSeconds }: { agentId:string;open: OpenPause | null;completedSeconds:number }) {
   const [currentPause, setCurrentPause] = useState<OpenPause | null>(open)
+  const [completed, setCompleted] = useState(completedSeconds)
+  const [offset, setOffset] = useState(0)
   const [now, setNow] = useState(Date.now())
   const [pending, setPending] = useState<'coffee' | 'lunch' | 'stop' | null>(null)
   const [message, setMessage] = useState('')
+  const syncing = useRef(false)
 
-  useEffect(() => setCurrentPause(open), [open])
-  useEffect(() => {
-    const timer = window.setInterval(() => setNow(Date.now()), 1000)
-    return () => window.clearInterval(timer)
+  const sync = useCallback(async () => {
+    if (syncing.current || document.visibilityState !== 'visible') return
+    syncing.current = true
+    try {
+      const response = await fetch('/api/pauses', { cache: 'no-store' })
+      if (!response.ok) return
+      const data = await response.json() as { serverNow: string; open: OpenPause | null; completedSeconds: number }
+      setCurrentPause(data.open)
+      setCompleted(data.completedSeconds)
+      const nextOffset = new Date(data.serverNow).getTime() - Date.now()
+      setOffset(nextOffset)
+      setNow(Date.now() + nextOffset)
+    } finally {
+      syncing.current = false
+    }
   }, [])
-  useEffect(()=>{if(!agentId)return;const supabase=createClient();const channel=supabase.channel(`own-pause-${agentId}`).on('postgres_changes',{event:'*',schema:'public',table:'pause_sessions',filter:`agent_id=eq.${agentId}`},payload=>{const row=(payload.new||payload.old) as {id:string;pause_type:string;started_at:string;ended_at:string|null};if(payload.eventType==='INSERT'&&!row.ended_at)setCurrentPause({id:row.id,pause_type:row.pause_type,started_at:row.started_at});if(payload.eventType==='UPDATE'&&row.ended_at)setCurrentPause(current=>current?.id===row.id?null:current);setNow(Date.now())}).subscribe();return()=>{void supabase.removeChannel(channel)}},[agentId])
+
+  useEffect(() => { setCurrentPause(open); setCompleted(completedSeconds) }, [open, completedSeconds])
+  useEffect(() => {
+    let timer:number
+    const tick=()=>{const adjusted=Date.now()+offset;setNow(adjusted);timer=window.setTimeout(tick,1000-(adjusted%1000)+5)}
+    tick()
+    return () => window.clearTimeout(timer)
+  }, [offset])
+  useEffect(()=>{void sync();const poll=window.setInterval(()=>void sync(),1000);return()=>window.clearInterval(poll)},[sync])
+  useEffect(()=>{if(!agentId)return;const supabase=createClient();const channel=supabase.channel(`own-pause-${agentId}`).on('postgres_changes',{event:'*',schema:'public',table:'pause_sessions',filter:`agent_id=eq.${agentId}`},()=>void sync()).subscribe();return()=>{void supabase.removeChannel(channel)}},[agentId,sync])
 
   const runningSeconds=currentPause?Math.max(0,Math.floor((now-new Date(currentPause.started_at).getTime())/1000)):0
 
@@ -42,7 +65,7 @@ export function PauseClock({ agentId, open, completedSeconds }: { agentId:string
       const body = await response.json()
       if (!response.ok) throw new Error(body.error || 'Impossible de démarrer la pause')
       setCurrentPause(body)
-      setNow(Date.now())
+      await sync()
       setMessage('Pause démarrée.')
     } catch (error) {
       setMessage(error instanceof Error ? error.message : 'Impossible de démarrer la pause')
@@ -60,6 +83,7 @@ export function PauseClock({ agentId, open, completedSeconds }: { agentId:string
       const body = await response.json()
       if (!response.ok) throw new Error(body.error || 'Impossible de terminer la pause')
       setCurrentPause(null)
+      await sync()
       setMessage('Pause terminée et enregistrée.')
     } catch (error) {
       setMessage(error instanceof Error ? error.message : 'Impossible de terminer la pause')
@@ -70,7 +94,7 @@ export function PauseClock({ agentId, open, completedSeconds }: { agentId:string
 
   return (
     <div className="space-y-4">
-      <div className="card p-4"><p className="text-xs uppercase text-slate-400">Temps de pause aujourd’hui</p><p className="mt-2 font-mono text-3xl font-black">{duration((completedSeconds+runningSeconds)*1000)}</p></div>
+      <div className="card p-4"><p className="text-xs uppercase text-slate-400">Temps de pause aujourd’hui</p><p className="mt-2 font-mono text-3xl font-black">{duration((completed+runningSeconds)*1000)}</p></div>
       {currentPause && (
         <div className="card border-l-4 border-l-orange-500 p-5 text-center">
           <p className="text-xs font-bold uppercase text-orange-600">

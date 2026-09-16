@@ -1,11 +1,13 @@
 'use client'
 
 import { FormEvent, useCallback, useEffect, useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { Loader2, Trash2, UserPlus } from 'lucide-react'
 
 type TeamUser = { id: string; full_name: string; email: string; role: 'admin' | 'supervisor' | 'agent'; agents: { id: string; code: string; active: boolean }[] }
 
 export function AgentManagement() {
+  const router = useRouter()
   const [users, setUsers] = useState<TeamUser[]>([])
   const [loading, setLoading] = useState(true)
   const [creating, setCreating] = useState(false)
@@ -25,18 +27,20 @@ export function AgentManagement() {
   async function createUser(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
     if (creating) return
+    const formElement = event.currentTarget
     setCreating(true)
     setMessage('')
-    const form = new FormData(event.currentTarget)
+    const form = new FormData(formElement)
     const role = String(form.get('role'))
     try {
       const response = await fetch('/api/admin/agents', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ fullName: form.get('fullName'), email: form.get('email'), password: form.get('password'), role, code: role === 'agent' ? form.get('code') : undefined }) })
       const body = await response.json().catch(() => ({}))
       if (!response.ok) throw new Error(body.error || 'Création impossible')
       if(body.user)setUsers((current) => [body.user, ...current.filter((user) => user.id !== body.user.id)])
-      event.currentTarget.reset()
-      setMessage('Compte créé avec succès. Il est déjà visible dans la liste.')
+      formElement.reset()
       await load()
+      setMessage('Compte créé avec succès. La liste a été actualisée.')
+      router.refresh()
     } catch (error) {
       setMessage(error instanceof Error ? error.message : 'Création impossible')
     } finally {
