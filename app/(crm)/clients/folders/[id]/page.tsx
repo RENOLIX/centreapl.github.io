@@ -4,17 +4,16 @@ import { notFound, redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { getCurrentRole } from '@/lib/admin-auth'
 import { ClientList } from '@/components/crm/client-list'
-import { fetchAllRows } from '@/lib/supabase-pagination'
 
 export const dynamic = 'force-dynamic'
 
 type Client = { id:string; first_name:string; last_name:string; phone:string; email:string; city:string; metadata:Record<string,unknown>; client_folders:{name:string}|null }
 
-export default async function FolderClientsPage({ params, searchParams }: { params:Promise<{id:string}>; searchParams:Promise<{q?:string}> }) {
+export default async function FolderClientsPage({ params, searchParams }: { params:Promise<{id:string}>; searchParams:Promise<{q?:string;p?:string}> }) {
   const role = await getCurrentRole()
   if (role !== 'admin') redirect('/dashboard')
   const { id } = await params
-  const { q = '' } = await searchParams
+  const { q = '', p = '1' } = await searchParams
   const supabase = await createClient()
   const unfiled = id === 'unfiled'
   let folderName = 'Sans dossier'
@@ -28,14 +27,20 @@ export default async function FolderClientsPage({ params, searchParams }: { para
   query = unfiled ? query.is('folder_id', null) : query.eq('folder_id', id)
   const clean = q.trim().replace(/[,%()]/g, '')
   if (clean) query = query.or(`first_name.ilike.%${clean}%,last_name.ilike.%${clean}%,phone.ilike.%${clean}%,city.ilike.%${clean}%`)
-  const { count } = await query.range(0, 0)
-  const clients = await fetchAllRows<Client>(async(from,to)=>await query.range(from,to) as unknown as {data:Client[]|null;error:{message:string}|null})
+  const pageSize = 100
+  const page = Math.max(1, Number.parseInt(p, 10) || 1)
+  const { data, count } = await query.range((page - 1) * pageSize, page * pageSize - 1)
+  const clients = (data ?? []) as unknown as Client[]
+  const total = count ?? 0
+  const pages = Math.max(1, Math.ceil(total / pageSize))
+  const href = (next:number) => `/clients/folders/${id}?${new URLSearchParams({ ...(clean ? { q:clean } : {}), p:String(next) }).toString()}`
 
   return <div className="space-y-6">
-    <div><Link href="/clients" className="inline-flex items-center gap-2 text-sm font-bold text-emerald-700"><ArrowLeft size={16}/>Retour aux dossiers</Link><h1 className="mt-3 text-2xl font-black">{folderName}</h1><p className="mt-1 text-sm text-slate-500">{count ?? clients.length} client(s) dans ce dossier.</p></div>
+    <div><Link href="/clients" className="inline-flex items-center gap-2 text-sm font-bold text-emerald-700"><ArrowLeft size={16}/>Retour aux dossiers</Link><h1 className="mt-3 text-2xl font-black">{folderName}</h1><p className="mt-1 text-sm text-slate-500">{total} client(s) dans ce dossier · page {Math.min(page,pages)} sur {pages}</p></div>
     <section className="card overflow-hidden">
-      <form className="flex border-b border-slate-100 p-4"><div className="relative flex-1"><Search size={17} className="absolute left-3 top-3 text-slate-400"/><input name="q" defaultValue={q} placeholder="Rechercher dans ce dossier" className="w-full rounded-xl border border-slate-200 py-2.5 pl-10 pr-3 text-sm outline-none focus:border-amber-400"/></div><button className="btn btn-primary ml-2">Rechercher</button></form>
+      <form className="flex border-b border-slate-100 p-4"><input type="hidden" name="p" value="1"/><div className="relative flex-1"><Search size={17} className="absolute left-3 top-3 text-slate-400"/><input name="q" defaultValue={q} placeholder="Rechercher dans ce dossier" className="w-full rounded-xl border border-slate-200 py-2.5 pl-10 pr-3 text-sm outline-none focus:border-amber-400"/></div><button className="btn btn-primary ml-2">Rechercher</button></form>
       <ClientList clients={clients} isAdmin={role === 'admin'} hasSearch={Boolean(q)}/>
+      {pages>1&&<div className="flex items-center justify-between border-t border-slate-100 p-4 text-sm"><span className="text-slate-500">Affichage {Math.min(total,(page-1)*pageSize+1)}–{Math.min(total,page*pageSize)} sur {total}</span><div className="flex gap-2">{page>1&&<Link href={href(page-1)} className="btn btn-ghost">Précédent</Link>}{page<pages&&<Link href={href(page+1)} className="btn btn-primary">Suivant</Link>}</div></div>}
     </section>
   </div>
 }
