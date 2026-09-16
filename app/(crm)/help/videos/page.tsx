@@ -3,20 +3,22 @@ import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { getCurrentProfile } from '@/lib/admin-auth'
 import { redirect } from 'next/navigation'
-import { HelpManagement } from '@/components/crm/help-management'
+import { VideoAudienceManagement } from '@/components/crm/video-audience-management'
 
 export const dynamic = 'force-dynamic'
 type VideoRow = { id:string; title:string; description:string; storage_path:string; created_at:string }
+type AudienceRow = { video_id:string; user_id:string }
 
 export default async function HelpVideosPage() {
   const profile = await getCurrentProfile()
   if (!profile) redirect('/login')
   const supabase = await createClient()
-  const [{ data: videos }, { data: recipients }] = await Promise.all([
+  const [{ data: videos }, { data: recipients }, { data: audienceRows }] = await Promise.all([
     supabase.from('help_videos').select('id,title,description,storage_path,created_at').order('created_at', { ascending:false }),
     profile.role === 'admin'
       ? supabase.from('users').select('id,full_name,email,role').in('role', ['agent','supervisor']).order('full_name')
       : Promise.resolve({ data: [] }),
+    profile.role === 'admin' ? supabase.from('help_video_recipients').select('video_id,user_id') : Promise.resolve({ data: [] }),
   ])
   const admin = createAdminClient()
   const signed = await Promise.all(((videos ?? []) as VideoRow[]).map(async video => ({
@@ -26,7 +28,7 @@ export default async function HelpVideosPage() {
 
   return <div className="space-y-6">
     <div><h1 className="flex items-center gap-2 text-2xl font-black"><Video className="text-emerald-600" />Vidéos</h1><p className="mt-1 text-sm text-slate-500">{profile.role === 'admin' ? 'Créez une vidéo puis choisissez qui peut la regarder.' : 'Toutes les vidéos qui vous sont attribuées.'}</p></div>
-    {profile.role === 'admin' && <HelpManagement recipients={(recipients ?? []) as Parameters<typeof HelpManagement>[0]['recipients']} />}
+    {profile.role === 'admin' && <VideoAudienceManagement videos={(videos ?? []).map(video=>({id:video.id,title:video.title}))} recipients={(recipients ?? []) as Parameters<typeof VideoAudienceManagement>[0]['recipients']} initialRecipients={((audienceRows ?? []) as AudienceRow[]).reduce<Record<string,string[]>>((all,row)=>{(all[row.video_id]??=[]).push(row.user_id);return all},{})} />}
     <section><h2 className="mb-3 font-black">Vidéos publiées</h2><div className="grid gap-5 lg:grid-cols-2">
       {signed.map(({ video, url }) => <article key={video.id} className="card overflow-hidden"><div className="aspect-video bg-slate-950">{url ? <video controls preload="metadata" className="h-full w-full" src={url} /> : <p className="grid h-full place-items-center text-sm text-white">Vidéo indisponible</p>}</div><div className="p-5"><h3 className="font-black">{video.title}</h3>{video.description && <p className="mt-2 whitespace-pre-wrap text-sm leading-6 text-slate-600">{video.description}</p>}<p className="mt-4 text-xs text-slate-400">Publiée le {new Date(video.created_at).toLocaleString('fr-DZ')}</p></div></article>)}
       {!signed.length && <div className="card col-span-full p-10 text-center text-sm text-slate-500">Aucune vidéo publiée pour le moment.</div>}
