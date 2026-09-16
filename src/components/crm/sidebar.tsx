@@ -1,7 +1,7 @@
 'use client'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { BarChart3, Bell, CalendarClock, ChevronRight, CircleHelp, Coffee, Contact, FileBarChart, Megaphone, PlayCircle, Settings, ShoppingCart, Target, Users, UsersRound } from 'lucide-react'
+import { BarChart3, Bell, CalendarClock, ChevronRight, CircleHelp, Coffee, Contact, FileBarChart, Megaphone, PlayCircle, Settings, ShoppingCart, Target, Users, UsersRound, Video } from 'lucide-react'
 import { LogoutButton } from './logout-button'
 type Role='admin'|'supervisor'|'agent';export type MenuBadges={callbacks:number;work:number;pauses:number;notifications:number}
 const allLinks=[['/dashboard','Dashboard',BarChart3,'all',''],['/work','Poste agent',PlayCircle,'agent','work'],['/agents','Agents',UsersRound,'management',''],['/clients','Contacts',Contact,'admin',''],['/campaigns','Campagnes',Megaphone,'admin',''],['/callbacks','Rappels',CalendarClock,'agent','callbacks'],['/sales','Ventes',ShoppingCart,'all',''],['/pauses','Pauses',Coffee,'all','pauses'],['/help','Aide',CircleHelp,'all',''],['/help/videos','Vidéos',Video,'all',''],['/notifications','Notifications',Bell,'management','notifications'],['/reports','Rapports d’appels',FileBarChart,'admin',''],['/teams','Équipes superviseurs',Users,'admin',''],['/targets','Objectifs',Target,'admin',''],['/settings','Administration',Settings,'admin','']] as const
