@@ -28,7 +28,8 @@ export default async function Dashboard() {
   const isManagement = role === 'admin' || role === 'supervisor'
   const day=algiersDayRange()
   let values = [0, 0, 0, 0, 0]
-  let targets:{revenue_target:number;returns_target:number}|null = null
+  let targetRevenue=0
+  let targetReturns=0
   let performance: AgentPerformance[] = []
   let campaigns: Campaign[] = []
   let pausedAgents = 0
@@ -52,7 +53,9 @@ export default async function Dashboard() {
     performance = ((agents.data ?? []) as unknown as Omit<AgentPerformance,'calls'|'callbacks'>[]).map(agent=>({...agent,calls:agentCalls.filter(call=>call.agent_id===agent.id),callbacks:agentCallbacks.filter(callback=>callback.agent_id===agent.id)}))
     campaigns = (campaignRows.data ?? []) as unknown as Campaign[]
     pausedAgents = activePauses.count ?? 0
-    targets=target.data as typeof targets
+    const targetData=target.data as unknown as {revenue_target:number;returns_target:number}|null
+    targetRevenue=Number(targetData?.revenue_target??0)
+    targetReturns=Number(targetData?.returns_target??0)
   } catch {}
 
   const [clientsCount, callsCount, successCount, callbackCount, salesCount] = values
@@ -74,8 +77,8 @@ export default async function Dashboard() {
 
   const tiles:Array<{label:string;value:ReactNode;Icon:typeof Clock3;color:string;href?:string}> = []
   if(role==='agent'||role==='supervisor'){
-    tiles.push({label:'Objectif chiffre d’affaires',value:`${targets?.revenue_target??0} DA`,Icon:DollarSign,color:'#5b3fa8'})
-    tiles.push({label:'Objectif retours',value:targets?.returns_target??0,Icon:RotateCcw,color:'#149a8a'})
+    tiles.push({label:'Objectif chiffre d’affaires',value:`${targetRevenue} DA`,Icon:DollarSign,color:'#5b3fa8'})
+    tiles.push({label:'Objectif retours',value:targetReturns,Icon:RotateCcw,color:'#149a8a'})
   }
   if(role==='admin'){
     tiles.push({label:'Contacts créés aujourd’hui',value:clientsCount,Icon:UsersRound,color:'#673ab7'},{label:'Appels terminés aujourd’hui',value:callsCount,Icon:PhoneCall,color:'#7447c8'},{label:'Rappels prévus aujourd’hui',value:callbackCount,Icon:Clock3,color:'#009688'},{label:'Appels réussis aujourd’hui',value:successCount,Icon:Headphones,color:'#16a9d5'},{label:'Ventes aujourd’hui',value:salesCount,Icon:ShoppingCart,color:'#e66b18',href:'/sales'})
