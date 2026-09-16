@@ -76,10 +76,6 @@ export default async function Dashboard() {
   }
 
   const tiles:Array<{label:string;value:ReactNode;Icon:typeof Clock3;color:string;href?:string}> = []
-  if(role==='agent'||role==='supervisor'){
-    tiles.push({label:'Objectif chiffre d’affaires',value:`${targetRevenue} DA`,Icon:DollarSign,color:'#5b3fa8'})
-    tiles.push({label:'Objectif retours',value:targetReturns,Icon:RotateCcw,color:'#149a8a'})
-  }
   if(role==='admin'){
     tiles.push({label:'Contacts créés aujourd’hui',value:clientsCount,Icon:UsersRound,color:'#673ab7'},{label:'Appels terminés aujourd’hui',value:callsCount,Icon:PhoneCall,color:'#7447c8'},{label:'Rappels prévus aujourd’hui',value:callbackCount,Icon:Clock3,color:'#009688'},{label:'Appels réussis aujourd’hui',value:successCount,Icon:Headphones,color:'#16a9d5'},{label:'Ventes aujourd’hui',value:salesCount,Icon:ShoppingCart,color:'#e66b18',href:'/sales'})
   } else {
@@ -90,6 +86,7 @@ export default async function Dashboard() {
 
   return <div className="space-y-4">
     <DashboardLiveRefresh />
+    {(role==='agent'||role==='supervisor')&&<section className="grid gap-2 sm:grid-cols-2"><div className="flex items-center justify-between border-l-4 border-violet-500 bg-violet-50 px-4 py-2.5"><span className="flex items-center gap-2 text-xs font-bold uppercase tracking-wide text-violet-700"><DollarSign size={15}/>Chiffre d’affaires à atteindre</span><span className="text-lg font-black text-violet-900">{targetRevenue} DA</span></div><div className="flex items-center justify-between border-l-4 border-teal-500 bg-teal-50 px-4 py-2.5"><span className="flex items-center gap-2 text-xs font-bold uppercase tracking-wide text-teal-700"><RotateCcw size={15}/>Retours à atteindre</span><span className="text-lg font-black text-teal-900">{targetReturns}</span></div></section>}
     <div className="border-b border-slate-300 pb-3"><h1 className="text-xl font-normal text-slate-600">Dashboard</h1><p className="mt-1 text-[10px] uppercase tracking-wider text-slate-400">Données réelles de la journée · remise à zéro chaque jour à minuit (Algérie)</p></div>
     <div className="grid gap-3 xl:grid-cols-12">
       <div className="space-y-3 xl:col-span-9">
