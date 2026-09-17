@@ -10,10 +10,11 @@ export async function POST(request: Request) {
   }
   const supabase = await createClient()
   const uniqueClientIds = [...new Set(input.clientIds)]
-  let folderClients = supabase.from('clients').select('id').in('id', uniqueClientIds)
+  // Count server-side: returning rows here is capped by Supabase at 1,000 and falsely rejects large folders.
+  let folderClients = supabase.from('clients').select('*', { count:'exact', head:true }).in('id', uniqueClientIds)
   folderClients = input.folderId === '__unfiled__' ? folderClients.is('folder_id', null) : folderClients.eq('folder_id', input.folderId)
-  const { data: matchingClients, error: folderError } = await folderClients
-  if (folderError || matchingClients?.length !== uniqueClientIds.length) {
+  const { count: matchingCount, error: folderError } = await folderClients
+  if (folderError || matchingCount !== uniqueClientIds.length) {
     return NextResponse.json({ error: 'Un ou plusieurs clients ne font pas partie du dossier choisi.' }, { status: 400 })
   }
   const {data,error}=await supabase.rpc('distribute_campaign_clients',{
