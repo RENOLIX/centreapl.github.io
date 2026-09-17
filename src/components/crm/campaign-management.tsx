@@ -24,7 +24,9 @@ export function CampaignManagement({
   const [selectedClients, setSelectedClients] = useState<string[]>([])
   const [selectedAgents, setSelectedAgents] = useState<string[]>([])
   const [selectedFolder, setSelectedFolder] = useState('')
+  const [allFolderClients, setAllFolderClients] = useState(false)
   const visibleClients = selectedFolder ? clients.filter(client => client.folderId === selectedFolder) : []
+  const selectedClientCount = allFolderClients ? visibleClients.length : selectedClients.length
 
   function toggle(value: string, selected: string[], update: (values: string[]) => void) {
     update(selected.includes(value) ? selected.filter((id) => id !== value) : [...selected, value])
@@ -60,7 +62,7 @@ export function CampaignManagement({
     if (pending) return
     const data = new FormData(event.currentTarget)
     const campaignId = String(data.get('campaignId') || '')
-    if (!campaignId || !selectedFolder || !selectedClients.length || !selectedAgents.length) {
+    if (!campaignId || !selectedFolder || !selectedClientCount || !selectedAgents.length) {
       setMessage('Choisissez une campagne, un dossier, au moins un client et au moins un agent.')
       return
     }
@@ -71,12 +73,13 @@ export function CampaignManagement({
       const response = await fetch('/api/campaigns/assign', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ campaignId, folderId: selectedFolder, clientIds: selectedClients, agentIds: selectedAgents }),
+        body: JSON.stringify({ campaignId, folderId: selectedFolder, clientIds: selectedClients, allFolder: allFolderClients, agentIds: selectedAgents }),
       })
       const body = await response.json()
       if (!response.ok) throw new Error(body.error || 'Distribution impossible')
       setMessage(`${body.assigned} client(s) réparti(s) entre ${selectedAgents.length} agent(s).`)
       setSelectedClients([])
+      setAllFolderClients(false)
       setSelectedAgents([])
       router.refresh()
     } catch (error) {
@@ -109,7 +112,7 @@ export function CampaignManagement({
             </select>
 
             <label className="block text-sm font-black">1. Choisir le dossier
-              <select required value={selectedFolder} disabled={pending} onChange={event => { setSelectedFolder(event.target.value); setSelectedClients([]) }} className="mt-2 w-full rounded-xl border border-slate-200 p-3 font-normal">
+              <select required value={selectedFolder} disabled={pending} onChange={event => { setSelectedFolder(event.target.value); setSelectedClients([]); setAllFolderClients(false) }} className="mt-2 w-full rounded-xl border border-slate-200 p-3 font-normal">
                 <option value="">Choisir un dossier avant d’afficher les clients</option>
                 {folders.map(folder => <option key={folder.id} value={folder.id}>{folder.label}</option>)}
               </select>
@@ -131,21 +134,21 @@ export function CampaignManagement({
             <fieldset disabled={pending}>
               <div className="mb-2 flex items-center justify-between">
                 <legend className="text-sm font-black">3. Choisir les clients du dossier</legend>
-                <button type="button" disabled={!selectedFolder} onClick={() => setSelectedClients(selectedClients.length === visibleClients.length ? [] : visibleClients.map((client) => client.id))} className="text-xs font-bold text-emerald-700 disabled:text-slate-300">
-                  {selectedClients.length === visibleClients.length && visibleClients.length ? 'Tout retirer' : 'Tous les clients'}
+                <button type="button" disabled={!selectedFolder} onClick={() => { setAllFolderClients(current=>!current); setSelectedClients([]) }} className="text-xs font-bold text-emerald-700 disabled:text-slate-300">
+                  {allFolderClients && visibleClients.length ? 'Tout retirer' : 'Tous les clients'}
                 </button>
               </div>
               <div className="max-h-52 space-y-1 overflow-y-auto rounded-xl border border-slate-200 p-2">
-                {visibleClients.map((client) => <label key={client.id} className="flex cursor-pointer items-center gap-3 rounded-lg p-2 hover:bg-slate-50"><input type="checkbox" checked={selectedClients.includes(client.id)} onChange={() => toggle(client.id, selectedClients, setSelectedClients)} /><span className="text-sm">{client.label}</span></label>)}
+                {visibleClients.map((client) => <label key={client.id} className="flex cursor-pointer items-center gap-3 rounded-lg p-2 hover:bg-slate-50"><input type="checkbox" checked={allFolderClients||selectedClients.includes(client.id)} onChange={() => { if(allFolderClients){setAllFolderClients(false);setSelectedClients(visibleClients.filter(item=>item.id!==client.id).map(item=>item.id))}else toggle(client.id, selectedClients, setSelectedClients) }} /><span className="text-sm">{client.label}</span></label>)}
                 {!selectedFolder && <p className="p-2 text-sm text-slate-500">Choisissez d’abord un dossier.</p>}
                 {selectedFolder && !visibleClients.length && <p className="p-2 text-sm text-slate-500">Ce dossier ne contient aucun client.</p>}
               </div>
             </fieldset>
 
             <p className="rounded-lg bg-emerald-50 p-3 text-xs font-semibold text-emerald-800">
-              {selectedClients.length} client(s) seront répartis équitablement entre {selectedAgents.length} agent(s).
+              {selectedClientCount} client(s) seront répartis équitablement entre {selectedAgents.length} agent(s).
             </p>
-            <button disabled={pending || !selectedClients.length || !selectedAgents.length} className="btn btn-primary w-full justify-center disabled:opacity-50">
+            <button disabled={pending || !selectedClientCount || !selectedAgents.length} className="btn btn-primary w-full justify-center disabled:opacity-50">
               {pending && <Loader2 size={16} className="animate-spin" />}
               Distribuer aux agents sélectionnés
             </button>
