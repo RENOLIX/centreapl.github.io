@@ -27,6 +27,7 @@ export default async function Dashboard() {
   const role = profile?.data?.role as 'admin' | 'supervisor' | 'agent' | undefined
   const isManagement = role === 'admin' || role === 'supervisor'
   const day=algiersDayRange()
+  const targetDate=new Intl.DateTimeFormat('en-CA',{timeZone:'Africa/Algiers'}).format(new Date())
   let values = [0, 0, 0, 0, 0]
   let targetRevenue=0
   let targetReturns=0
@@ -46,7 +47,7 @@ export default async function Dashboard() {
       isManagement ? supabase.from('callbacks').select('id,agent_id,status').gte('scheduled_for',day.start).lt('scheduled_for',day.end) : Promise.resolve({data:[]}),
       supabase.from('campaigns').select('id,name,active,client_assignments(id)').eq('active', true).order('created_at', { ascending: false }).limit(5),
       isManagement?supabase.from('pause_sessions').select('*',{count:'exact',head:true}).is('ended_at',null):Promise.resolve({count:0}),
-      role==='agent'||role==='supervisor' ? supabase.from('performance_targets').select('revenue_target,returns_target').eq('user_id',auth.user?.id||'').eq('target_date',day.start.slice(0,10)).maybeSingle() : Promise.resolve({data:null}),
+      role==='agent'||role==='supervisor' ? supabase.from('performance_targets').select('revenue_target,returns_target').eq('user_id',auth.user?.id||'').eq('target_date',targetDate).maybeSingle() : Promise.resolve({data:null}),
     ])
     values = [clients.count ?? 0, calls.count ?? 0, successes.count ?? 0, callbacks.count ?? 0, sales.count ?? 0]
     const agentCalls=(todayAgentCalls.data??[]) as unknown as Array<AgentPerformance['calls'][number]&{agent_id:string}>;const agentCallbacks=(todayAgentCallbacks.data??[]) as unknown as Array<AgentPerformance['callbacks'][number]&{agent_id:string}>
@@ -86,7 +87,7 @@ export default async function Dashboard() {
 
   return <div className="space-y-4">
     <DashboardLiveRefresh />
-    {(role==='agent'||role==='supervisor')&&<section className="grid gap-2 sm:grid-cols-2"><div className="flex items-center justify-between border-l-4 border-violet-500 bg-violet-50 px-4 py-2.5"><span className="flex items-center gap-2 text-xs font-bold uppercase tracking-wide text-violet-700"><DollarSign size={15}/>Chiffre d’affaires à atteindre</span><span className="text-lg font-black text-violet-900">{targetRevenue} DA</span></div><div className="flex items-center justify-between border-l-4 border-teal-500 bg-teal-50 px-4 py-2.5"><span className="flex items-center gap-2 text-xs font-bold uppercase tracking-wide text-teal-700"><RotateCcw size={15}/>Retours à atteindre</span><span className="text-lg font-black text-teal-900">{targetReturns}</span></div></section>}
+    {(role==='agent'||role==='supervisor')&&<section className="grid gap-2 sm:grid-cols-2"><div className="flex items-center justify-between border-l-4 border-violet-500 bg-violet-50 px-4 py-2.5"><span className="flex items-center gap-2 text-xs font-bold uppercase tracking-wide text-violet-700"><DollarSign size={15}/>Chiffre d’affaires</span><span className="text-lg font-black text-violet-900">{targetRevenue} DA</span></div><div className="flex items-center justify-between border-l-4 border-teal-500 bg-teal-50 px-4 py-2.5"><span className="flex items-center gap-2 text-xs font-bold uppercase tracking-wide text-teal-700"><RotateCcw size={15}/>Retours à atteindre</span><span className="text-lg font-black text-teal-900">{targetReturns}</span></div></section>}
     <div className="border-b border-slate-300 pb-3"><h1 className="text-xl font-normal text-slate-600">Dashboard</h1><p className="mt-1 text-[10px] uppercase tracking-wider text-slate-400">Données réelles de la journée · remise à zéro chaque jour à minuit (Algérie)</p></div>
     <div className="grid gap-3 xl:grid-cols-12">
       <div className="space-y-3 xl:col-span-9">
